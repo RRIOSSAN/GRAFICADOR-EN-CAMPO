@@ -1,0 +1,11 @@
+APP DE REPLANTEO PWA V1.3
+
+1. Publique todos estos archivos juntos mediante HTTPS.
+2. Abra la APP una vez con internet para que el navegador guarde también Leaflet y Proj4.
+3. Instale la APP desde el menú del navegador: Agregar a pantalla de inicio / Instalar aplicación.
+4. Luego puede apagar los datos. La APP y el GPS seguirán funcionando.
+5. Sin internet no se mostrará el mapa. Las coordenadas GPS sí se capturan y guardan.
+6. Mantenga activada la Ubicación del celular y conceda permiso a la APP.
+7. Para mayor precisión, espere al aire libre; el primer posicionamiento sin datos puede tardar hasta 60 segundos.
+
+IMPORTANTE: abrir index.html como archivo local no activa correctamente el Service Worker. Use HTTPS para instalar la PWA.
