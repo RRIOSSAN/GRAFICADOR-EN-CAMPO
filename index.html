@@ -256,6 +256,67 @@
         border-radius: 8px;
       }
 
+      .gps-adjust-actions {
+        display: none;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      .gps-adjust-actions.active {
+        display: flex;
+      }
+
+      .gps-adjust-marker {
+        width: 24px;
+        height: 24px;
+        border-radius: 50% 50% 50% 0;
+        background: #0d6efd;
+        border: 3px solid #fff;
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.45);
+        transform: rotate(-45deg);
+      }
+
+      .gps-adjust-marker.manual {
+        background: #fd7e14;
+      }
+
+      .network-length {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        font-weight: 700;
+      }
+
+      .network-length input {
+        width: 130px !important;
+        height: 40px !important;
+        padding: 5px 7px;
+        text-align: right;
+      }
+
+      .map-wrapper {
+        position: relative;
+      }
+
+      .map-refresh {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        z-index: 1000;
+        width: 46px;
+        height: 46px;
+        border: 0;
+        border-radius: 50%;
+        background: #198754;
+        color: #fff;
+        font-size: 29px;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.32);
+      }
+
       #map {
         height: clamp(360px, 58vh, 650px);
         border-radius: 9px;
@@ -563,109 +624,6 @@
         background: #e8f5ed;
         color: #0f5132;
       }
-
-      .element-row {
-        grid-template-columns: 1fr !important;
-        padding: 10px;
-        border: 1px solid var(--bd);
-        border-radius: 10px;
-        background: #fff;
-      }
-      .element-fields {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-        gap: 8px;
-        align-items: end;
-      }
-      .element-fields .description-field {
-        min-width: 220px;
-      }
-      .element-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 7px;
-      }
-      .specific-fields {
-        display: contents;
-      }
-      .required-mark {
-        color: #dc3545;
-        font-weight: 700;
-      }
-      @media (max-width: 600px) {
-        .element-fields {
-          grid-template-columns: 1fr 1fr;
-        }
-        .element-fields .description-field {
-          grid-column: 1/-1;
-        }
-        .element-actions {
-          grid-column: 1/-1;
-        }
-      }
-      .gps-adjust-actions {
-        display: none;
-        gap: 8px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-      }
-      .gps-adjust-actions.active {
-        display: flex;
-      }
-      .gps-adjust-marker {
-        width: 24px;
-        height: 24px;
-        border-radius: 50% 50% 50% 0;
-        background: #0d6efd;
-        border: 3px solid #fff;
-        box-shadow: 0 2px 7px #0007;
-        transform: rotate(-45deg);
-      }
-      .gps-adjust-marker.manual {
-        background: #fd7e14;
-      }
-      .element-row {
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
-      }
-      .element-fields {
-        grid-template-columns: repeat(auto-fit, minmax(min(145px, 100%), 1fr));
-        width: 100%;
-        max-width: 100%;
-      }
-      .element-fields > div,
-      .specific-fields > div,
-      .general-condition,
-      .description-field {
-        min-width: 0;
-        max-width: 100%;
-      }
-      .element-fields input,
-      .element-fields select {
-        min-width: 0;
-        max-width: 100%;
-        width: 100%;
-      }
-      .description-field {
-        min-width: 0 !important;
-      }
-      @media (max-width: 700px) {
-        .element-fields {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .description-field {
-          grid-column: 1/-1;
-        }
-      }
-      @media (max-width: 430px) {
-        .element-fields {
-          grid-template-columns: 1fr;
-        }
-        .description-field {
-          grid-column: auto;
-        }
-      }
     </style>
   </head>
 
@@ -735,10 +693,12 @@
                 <div id="gpsQuality" class="gps-quality">GPS sin activar</div>
                 <div id="gpsAdjustActions" class="gps-adjust-actions">
                   <button type="button" id="adjustGps" class="secondary">
-                    Ajustar coordenada</button
-                  ><button type="button" id="confirmGps" class="primary hidden">
-                    Confirmar ubicación</button
-                  ><button type="button" id="resumeGps" class="secondary">
+                    Ajustar coordenada
+                  </button>
+                  <button type="button" id="confirmGps" class="primary hidden">
+                    Confirmar ubicación
+                  </button>
+                  <button type="button" id="resumeGps" class="secondary">
                     Reanudar GPS
                   </button>
                 </div>
@@ -780,7 +740,18 @@
             <button id="all" class="secondary">Ver todos los puntos</button
             ><button id="loc" class="primary">Centrar en mi ubicación</button>
           </div>
-          <div id="map"></div>
+          <div class="map-wrapper">
+            <div id="map"></div>
+            <button
+              type="button"
+              id="refreshMap"
+              class="map-refresh"
+              aria-label="Actualizar mapa"
+              title="Actualizar mapa"
+            >
+              ↻
+            </button>
+          </div>
           <div id="mapMode" class="map-mode">
             Satélite en línea. Las zonas visualizadas se guardan progresivamente
             para uso sin conexión.
@@ -876,7 +847,7 @@
         const supports = [
           "Poste",
           "Caja subterránea",
-          "Otro elemento de sujeción",
+          "Otro elemento de apoyo",
         ];
         const options = [
           ...supports,
@@ -890,7 +861,6 @@
           "Red BT",
           "Tierra",
           "Cruce aereo",
-          "Estructura",
           "Otro",
         ];
         proj4.defs(
@@ -931,7 +901,7 @@
             ? "NUEVO"
             : normalizeStatus(s) === "reposicion"
               ? "REPOSICION"
-              : "INTERVENIDO";
+              : "EXISTENTE";
         function tell(t, e = false, id = "msg") {
           const el = $(id);
           el.textContent = t;
@@ -1038,401 +1008,23 @@
           setMode(e.target.value);
           previewManual();
         };
-        const POST_HEIGHTS = [8, 9, 10, 11, 12, 14, 16];
-        const POST_LOADS = {
-          Concreto: [510, 750, 1050, 1350, 1500, 2000, 3000],
-          Fibra: [510, 750, 1050, 1350],
-        };
-        const MT_CALIBERS = [
-          "1/0 AWG",
-          "2/0 AWG",
-          "3/0 AWG",
-          "4/0 AWG",
-          "266 MCM",
-          "336 MCM",
-        ];
-        const BT_GAUGES = ["2", "4", "6", "8", "1/0", "2/0", "3/0", "4/0"];
-        const STRUCTURES = {
-          MT: [
-            "503",
-            "505",
-            "504",
-            "506",
-            "542",
-            "540",
-            "514",
-            "515",
-            "550",
-            "550B",
-            "553",
-            "553A (B03)",
-            "R-114 T",
-            "552",
-            "560",
-            "560A (B04)",
-            "R-130",
-            "561",
-            "562",
-            "562A",
-            "R-114 Ab",
-            "RE-300",
-            "RH-214",
-            "RH-230",
-            "RH-231",
-            "RH-232",
-            "SH-225",
-            "SH-226",
-            "PH-215",
-            "PH-213",
-            "PH-201",
-            "PH-202",
-            "PH-203",
-            "PH-204",
-            "PH-211",
-            "533",
-            "533A (B01)",
-            "530",
-            "510",
-            "512",
-            "522",
-            "511",
-            "523",
-            "523A (B02)",
-            "513",
-            "532",
-          ],
-          "Derivación MT": ["730", "731", "732", "733"],
-          Transformador: ["710", "711", "712"],
-          BT: [
-            "610",
-            "611",
-            "612",
-            "613",
-            "615",
-            "616",
-            "617",
-            "619",
-            "620",
-            "621",
-            "623",
-            "624",
-            "625",
-            "626",
-            "628",
-            "629",
-          ],
-        };
-
-        function selectOptions(values, selected) {
-          return values
-            .map(
-              (value) =>
-                `<option value="${esc(value)}" ${String(value) === String(selected) ? "selected" : ""}>${esc(value)}</option>`,
-            )
-            .join("");
-        }
-        function selectOptionsWithBlank(
-          values,
-          selected,
-          label = "Seleccione...",
-        ) {
-          return (
-            `<option value="">${label}</option>` +
-            selectOptions(values, selected)
-          );
-        }
-        function conditionOptions(selected = "Existente") {
-          const value = selected === "Intervenido" ? "Existente" : selected;
-          return selectOptions(
-            ["Existente", "Nuevo", "Reposicion"],
-            value,
-          ).replace(">Reposicion<", ">Reposición<");
-        }
-        function postTypes(material) {
-          return POST_HEIGHTS.flatMap((height) =>
-            POST_LOADS[material].map((load) => `${height}×${load}`),
-          );
-        }
-        function btCalibers(configuration) {
-          const prefix = configuration === "Cuádruplex" ? "3×" : "2×";
-          return BT_GAUGES.map((gauge) => `${prefix}${gauge}+${gauge} AWG`);
-        }
-        function phasesByQuantity(quantity) {
-          return String(quantity) === "1"
-            ? ["R", "S", "T"]
-            : String(quantity) === "2"
-              ? ["RS", "RT", "ST"]
-              : ["RST"];
-        }
-        function field(label, html, required = false) {
-          return `<div><label>${label}${required ? ' <span class="required-mark">*</span>' : ""}</label>${html}</div>`;
-        }
-        function selectField(
-          className,
-          label,
-          values,
-          selected,
-          required = false,
-        ) {
-          return field(
-            label,
-            `<select class="${className}">${selectOptions(values, selected || values[0])}</select>`,
-            required,
-          );
-        }
-        function inputField(className, label, value = "", required = false) {
-          return field(
-            label,
-            `<input class="${className}" value="${esc(value)}">`,
-            required,
-          );
-        }
-
-        function specificFields(type, details = {}) {
-          if (type === "Poste") {
-            const material = details.material || "Concreto";
-            return (
-              selectField(
-                "sp-material",
-                "Material",
-                ["Concreto", "Fibra"],
-                material,
-              ) +
-              field(
-                "Poste típico",
-                `<select class="sp-poste">${selectOptionsWithBlank(postTypes(material), details.poste, "Seleccione poste...")}</select>`,
-                true,
-              )
-            );
-          }
-          if (type === "Transformador") {
-            const activeCondition = details.activeCondition || "Existente";
-            const equipmentState = details.equipmentState || "Nuevo";
-            return (
-              selectField(
-                "sp-active-condition",
-                "Condición",
-                ["Instalado", "Retirado", "Existente"],
-                activeCondition,
-              ) +
-              `<div class="trafo-state ${activeCondition === "Instalado" ? "" : "hidden"}">${selectField("sp-equipment-state", "Estado", ["Nuevo", "Reparado"], equipmentState)}</div>` +
-              inputField("sp-ne", "N.E.", details.ne || "", true) +
-              inputField("sp-serial", "Serial", details.serial || "", true)
-            );
-          }
-          if (["DPS", "Cortacircuito", "Cuchilla"].includes(type)) {
-            const quantity = String(details.quantity || 1);
-            const kinds =
-              type === "Cuchilla"
-                ? ["Monopolar", "Juego"]
-                : ["Monopolar", "Repetición"];
-            return (
-              selectField(
-                "sp-quantity",
-                "Cantidad",
-                ["1", "2", "3"],
-                quantity,
-              ) +
-              selectField(
-                "sp-kind",
-                type === "Cuchilla" ? "Configuración" : "Tipo",
-                kinds,
-                details.kind,
-              ) +
-              selectField(
-                "sp-phases",
-                "Fases",
-                phasesByQuantity(quantity),
-                details.phases,
-              )
-            );
-          }
-          if (type === "Caja de derivación")
-            return selectField(
-              "sp-phases",
-              "Fases",
-              ["2F", "3F"],
-              details.phases,
-            );
-          if (type === "Cruce aereo")
-            return selectField(
-              "sp-level",
-              "Nivel",
-              ["BT", "MT"],
-              details.level,
-            );
-          if (type === "Red MT")
-            return (
-              selectField(
-                "sp-conductor",
-                "Conductor",
-                ["ACSR", "Semiaislado"],
-                details.conductor,
-              ) +
-              selectField("sp-caliber", "Calibre", MT_CALIBERS, details.caliber)
-            );
-          if (type === "Red BT") {
-            const configuration = details.configuration || "Tríplex";
-            return (
-              selectField(
-                "sp-configuration",
-                "Configuración",
-                ["Tríplex", "Cuádruplex"],
-                configuration,
-              ) +
-              selectField(
-                "sp-caliber",
-                "Calibre",
-                btCalibers(configuration),
-                details.caliber,
-              )
-            );
-          }
-          if (type === "Estructura") {
-            const family = details.family || "MT";
-            return (
-              selectField(
-                "sp-family",
-                "Familia",
-                ["MT", "Derivación MT", "Transformador", "BT"],
-                family,
-              ) +
-              `<div class="structure-voltage ${family === "MT" ? "" : "hidden"}">${selectField("sp-voltage", "Tensión", ["7,6 kV", "13,2 kV", "34,5 kV"], details.voltage)}</div>` +
-              selectField("sp-code", "Código", STRUCTURES[family], details.code)
-            );
-          }
-          return "";
-        }
-
-        function usesGeneralCondition(type) {
-          return type !== "Transformador";
-        }
-        function elementColorStatus(element) {
-          if (element.type !== "Transformador") return element.status;
-          if (element.details?.activeCondition === "Instalado")
-            return element.details?.equipmentState === "Reparado"
-              ? "Reposicion"
-              : "Nuevo";
-          return "Existente";
-        }
-
-        function bindSpecificFields(rowElement) {
-          const typeSelect = rowElement.querySelector(".tp");
-          const detailsBox = rowElement.querySelector(".specific-fields");
-          const conditionBox = rowElement.querySelector(".general-condition");
-          function rebuild(details = {}) {
-            const type = typeSelect.value;
-            detailsBox.innerHTML = type ? specificFields(type, details) : "";
-            conditionBox.classList.toggle(
-              "hidden",
-              !type || !usesGeneralCondition(type),
-            );
-            bindDependencies(rowElement);
-            paintElementRow(rowElement);
-          }
-          typeSelect.onchange = () => rebuild({});
-          rebuild(rowElement._initialDetails || {});
-        }
-
-        function bindDependencies(rowElement) {
-          const material = rowElement.querySelector(".sp-material");
-          if (material)
-            material.onchange = () => {
-              const select = rowElement.querySelector(".sp-poste");
-              select.innerHTML = selectOptions(
-                postTypes(material.value),
-                postTypes(material.value)[0],
-              );
-            };
-          const quantity = rowElement.querySelector(".sp-quantity");
-          if (quantity)
-            quantity.onchange = () => {
-              const select = rowElement.querySelector(".sp-phases");
-              select.innerHTML = selectOptions(
-                phasesByQuantity(quantity.value),
-                phasesByQuantity(quantity.value)[0],
-              );
-            };
-          const configuration = rowElement.querySelector(".sp-configuration");
-          if (configuration)
-            configuration.onchange = () => {
-              const select = rowElement.querySelector(".sp-caliber");
-              select.innerHTML = selectOptions(
-                btCalibers(configuration.value),
-                btCalibers(configuration.value)[0],
-              );
-            };
-          const active = rowElement.querySelector(".sp-active-condition");
-          if (active)
-            active.onchange = () => {
-              rowElement
-                .querySelector(".trafo-state")
-                .classList.toggle("hidden", active.value !== "Instalado");
-              paintElementRow(rowElement);
-            };
-          const state = rowElement.querySelector(".sp-equipment-state");
-          if (state) state.onchange = () => paintElementRow(rowElement);
-          const family = rowElement.querySelector(".sp-family");
-          if (family)
-            family.onchange = () => {
-              rowElement
-                .querySelector(".structure-voltage")
-                .classList.toggle("hidden", family.value !== "MT");
-              const code = rowElement.querySelector(".sp-code");
-              code.innerHTML = selectOptions(
-                STRUCTURES[family.value],
-                STRUCTURES[family.value][0],
-              );
-            };
-        }
-
-        function paintElementRow(rowElement) {
-          const type = rowElement.querySelector(".tp").value;
-          let status = rowElement.querySelector(".st")?.value || "Existente";
-          if (type === "Transformador") {
-            const active = rowElement.querySelector(
-              ".sp-active-condition",
-            )?.value;
-            status =
-              active === "Instalado"
-                ? rowElement.querySelector(".sp-equipment-state")?.value ===
-                  "Reparado"
-                  ? "Reposicion"
-                  : "Nuevo"
-                : "Existente";
-          }
-          rowElement.querySelector(".tx").style.color = color(status);
-        }
-
-        function row(
-          type = "",
-          text = "",
-          status = "Existente",
-          first = null,
-          details = {},
-        ) {
-          const isFirst = first ?? !$("elements").children.length;
-          const rowElement = document.createElement("div");
-          const list = isFirst ? supports : options;
-          const selected = list.includes(type) ? type : "";
-          rowElement.className = "element-row";
-          rowElement._initialDetails = details || {};
-          rowElement.innerHTML = `<div class="element-fields">
-                    ${field(isFirst ? "Apoyo obligatorio" : "Elemento", `<select class="tp">${selectOptionsWithBlank(list, selected, isFirst ? "Seleccione apoyo..." : "Seleccione elemento...")}</select>`, true)}
-                    <div class="specific-fields"></div>
-                    <div class="general-condition">${selectField("st", "Condición", ["Existente", "Nuevo", "Reposicion"], status)}</div>
-                    <div class="description-field">${inputField("tx", "Descripción", text)}</div>
-                </div><div class="element-actions">${isFirst ? '<button type="button" disabled>Obligatorio</button>' : '<button type="button" class="danger rm">Eliminar</button>'}</div>`;
-          rowElement.querySelector(".st").onchange = () =>
-            paintElementRow(rowElement);
-          rowElement
-            .querySelector(".rm")
-            ?.addEventListener("click", () => rowElement.remove());
-          $("elements").appendChild(rowElement);
-          bindSpecificFields(rowElement);
+        function row(type = "", text = "", status = "Existente", first = null) {
+          const isFirst = first ?? !$("elements").children.length,
+            r = document.createElement("div");
+          r.className = "element-row";
+          const list = isFirst ? supports : options,
+            selected = list.includes(type) ? type : list[0];
+          r.innerHTML = `<div><label>Condición</label><select class="st"><option ${status === "Existente" || status === "Intervenido" ? "selected" : ""}>Existente</option><option ${status === "Nuevo" ? "selected" : ""}>Nuevo</option><option value="Reposicion" ${status === "Reposicion" ? "selected" : ""}>Reposición</option></select></div><div><label>${isFirst ? "Apoyo obligatorio" : "Elemento"}</label><select class="tp">${list.map((x) => `<option ${x === selected ? "selected" : ""}>${x}</option>`).join("")}</select></div><div><label>Dato / descripción</label><input class="tx" value="${esc(text)}"></div>${isFirst ? '<button type="button" disabled>Obligatorio</button>' : '<button type="button" class="danger rm">Eliminar</button>'}`;
+          const paint = () =>
+            (r.querySelector(".tx").style.color = color(
+              r.querySelector(".st").value,
+            ));
+          r.querySelector(".st").onchange = paint;
+          paint();
+          r.querySelector(".rm")?.addEventListener("click", () => r.remove());
+          $("elements").appendChild(r);
         }
         $("add").onclick = () => row();
-
         function gpsMarkerIcon(manual = false) {
           return L.divIcon({
             className: "",
@@ -1664,75 +1256,18 @@
           edit = -1;
           lastGpsAccuracy = null;
           lastGpsTime = null;
+          originalGpsLongitude = null;
+          originalGpsLatitude = null;
+          gpsManuallyAdjusted = false;
+          gpsAdjusting = false;
+          hideGpsAdjustmentControls();
+          if (miniMarker?.dragging) miniMarker.dragging.disable();
           $("gpsPreview").classList.remove("active");
           $("gpsQuality").className = "gps-quality";
           $("gpsQuality").textContent = "GPS sin activar";
           $("gps").textContent = "Tomar coordenada con GPS";
         }
         $("clear").onclick = clear;
-        function readElementDetails(rowElement, type) {
-          const value = (selector) =>
-            rowElement.querySelector(selector)?.value || "";
-          if (type === "Poste")
-            return {
-              material: value(".sp-material"),
-              poste: value(".sp-poste"),
-            };
-          if (type === "Transformador")
-            return {
-              activeCondition: value(".sp-active-condition"),
-              equipmentState:
-                value(".sp-active-condition") === "Instalado"
-                  ? value(".sp-equipment-state")
-                  : "",
-              ne: value(".sp-ne").trim(),
-              serial: value(".sp-serial").trim(),
-            };
-          if (["DPS", "Cortacircuito", "Cuchilla"].includes(type))
-            return {
-              quantity: value(".sp-quantity"),
-              kind: value(".sp-kind"),
-              phases: value(".sp-phases"),
-            };
-          if (type === "Caja de derivación")
-            return { phases: value(".sp-phases") };
-          if (type === "Cruce aereo") return { level: value(".sp-level") };
-          if (type === "Red MT")
-            return {
-              conductor: value(".sp-conductor"),
-              caliber: value(".sp-caliber"),
-            };
-          if (type === "Red BT")
-            return {
-              configuration: value(".sp-configuration"),
-              caliber: value(".sp-caliber"),
-            };
-          if (type === "Estructura")
-            return {
-              family: value(".sp-family"),
-              voltage: value(".sp-family") === "MT" ? value(".sp-voltage") : "",
-              code: value(".sp-code"),
-            };
-          return {};
-        }
-        function readElementRow(rowElement) {
-          const type = rowElement.querySelector(".tp").value;
-          const details = readElementDetails(rowElement, type);
-          let status = rowElement.querySelector(".st")?.value || "Existente";
-          if (type === "Transformador")
-            status =
-              details.activeCondition === "Instalado"
-                ? details.equipmentState === "Reparado"
-                  ? "Reposicion"
-                  : "Nuevo"
-                : "Existente";
-          return {
-            type,
-            status,
-            text: rowElement.querySelector(".tx").value.trim(),
-            details,
-          };
-        }
         $("form").onsubmit = (e) => {
           e.preventDefault();
           const number = $("numero").value.trim(),
@@ -1741,28 +1276,12 @@
           if (!number || !Number.isFinite(c1) || !Number.isFinite(c2))
             return tell("Complete numeración y coordenadas.", true);
           const els = [...document.querySelectorAll(".element-row")].map(
-            readElementRow,
+            (r) => ({
+              status: r.querySelector(".st").value,
+              type: r.querySelector(".tp").value,
+              text: r.querySelector(".tx").value.trim(),
+            }),
           );
-          if (els.some((element) => !element.type))
-            return tell("Seleccione el elemento en todas las filas.", true);
-          if (
-            els.some(
-              (element) => element.type === "Poste" && !element.details.poste,
-            )
-          )
-            return tell("Seleccione el poste típico.", true);
-          const invalidTrafo = els.find(
-            (element) =>
-              element.type === "Transformador" &&
-              (!element.details.ne || !element.details.serial),
-          );
-          if (invalidTrafo)
-            return tell(
-              "N.E. y Serial son obligatorios para el transformador.",
-              true,
-            );
-          if (!els[0]?.type)
-            return tell("Seleccione el apoyo obligatorio.", true);
           if (!supports.includes(els[0]?.type))
             return tell("El primer elemento debe ser un apoyo.", true);
           const p = {
@@ -1772,6 +1291,14 @@
             c2,
             accuracy: lastGpsAccuracy,
             gpsTime: lastGpsTime,
+            source: gpsManuallyAdjusted
+              ? "GPS ajustado"
+              : mode === "GEO"
+                ? "GPS"
+                : "Manual",
+            originalLongitude: originalGpsLongitude,
+            originalLatitude: originalGpsLatitude,
+            manuallyAdjusted: gpsManuallyAdjusted,
             elements: els,
           };
           if (edit < 0) points.push(p);
@@ -1781,54 +1308,6 @@
           clear();
           openView("pts");
         };
-        function detailsText(element) {
-          const d = element.details || {};
-          switch (element.type) {
-            case "Poste":
-              return [d.material, d.poste].filter(Boolean).join(" · ");
-            case "Transformador":
-              return [
-                d.activeCondition,
-                d.equipmentState,
-                d.ne && `N.E.: ${d.ne}`,
-                d.serial && `Serial: ${d.serial}`,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-            case "DPS":
-            case "Cortacircuito":
-            case "Cuchilla":
-              return [
-                `Cant.: ${d.quantity}`,
-                d.kind,
-                d.phases && `Fases: ${d.phases}`,
-              ]
-                .filter(Boolean)
-                .join(" · ");
-            case "Caja de derivación":
-              return d.phases || "";
-            case "Cruce aereo":
-              return d.level || "";
-            case "Red MT":
-              return [d.conductor, d.caliber].filter(Boolean).join(" · ");
-            case "Red BT":
-              return [d.configuration, d.caliber].filter(Boolean).join(" · ");
-            case "Estructura":
-              return [d.family, d.voltage, d.code].filter(Boolean).join(" · ");
-            default:
-              return "";
-          }
-        }
-        function dxfSafeText(value) {
-          return String(value ?? "")
-            .replaceAll(" · ", " - ")
-            .replaceAll("×", "x");
-        }
-        function elementSummary(element) {
-          const detail = detailsText(element),
-            description = element.text ? ` · ${element.text}` : "";
-          return `${element.type}${detail ? ` · ${detail}` : ""}${description} (${element.type === "Transformador" ? element.details?.activeCondition || "Existente" : element.status === "Reposicion" ? "Reposición" : element.status})`;
-        }
         function pairKey(a, b) {
           return [String(a), String(b)].sort().join("||");
         }
@@ -1876,7 +1355,59 @@
           );
         }
         function get(n) {
-          return points.find((p) => p.number === n);
+          return points.find((point) => point.number === n);
+        }
+        function isSameNetwork(a, b) {
+          return (
+            a.type === b.type &&
+            String(a.text || "").trim() === String(b.text || "").trim() &&
+            normalizeStatus(a.status) === normalizeStatus(b.status)
+          );
+        }
+        function formatLength(value) {
+          const number = Number(value);
+          return Number.isFinite(number) && number > 0
+            ? Number.isInteger(number)
+              ? String(number)
+              : String(Number(number.toFixed(2)))
+            : "";
+        }
+        function getNetworkRoutes(point, element) {
+          if (!point || !["Red MT", "Red BT"].includes(element.type)) return [];
+          return tramos.flatMap((tramo) =>
+            tramo.start !== point.number
+              ? []
+              : tramo.networks
+                  .filter((network) => isSameNetwork(network, element))
+                  .map((network) => ({
+                    start: tramo.start,
+                    end: tramo.end,
+                    length: network.length,
+                  })),
+          );
+        }
+        function getNetworkRouteText(point, element) {
+          return getNetworkRoutes(point, element)
+            .map(
+              (route) =>
+                ` - ${route.start} a ${route.end}${formatLength(route.length) ? ` - L: ${formatLength(route.length)} m` : ""}`,
+            )
+            .join("");
+        }
+        function getElementDisplayText(point, element) {
+          return `${element.type}: ${element.text} (${element.status})${getNetworkRouteText(point, element)}`;
+        }
+        function getElementPopupHtml(point, element) {
+          return `<b>${esc(element.type)}:</b> ${esc(element.text)} (${esc(element.status)})${esc(getNetworkRouteText(point, element))}`;
+        }
+        function refreshMapInformation(showMessage = false) {
+          if (!map || !markers || !lines) return;
+          const center = map.getCenter(),
+            zoom = map.getZoom();
+          renderMap(false);
+          map.setView(center, zoom, { animate: false });
+          map.invalidateSize();
+          if (showMessage) tell("Información del mapa actualizada.");
         }
         function renderMap(fit = false) {
           if (!markers) return;
@@ -1903,7 +1434,7 @@
                 pane: "labelsPane",
               })
               .bindPopup(
-                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((e) => `${esc(elementSummary(e))}`).join("<br>")}`,
+                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((element) => getElementPopupHtml(p, element)).join("<br>")}`,
               );
             bounds.push(ll);
           });
@@ -1962,8 +1493,8 @@
               '<option value="">Seleccione...</option>' +
               points
                 .map(
-                  (p) =>
-                    `<option value="${esc(p.number)}">${esc(p.number)}</option>`,
+                  (point) =>
+                    `<option value="${esc(point.number)}">${esc(point.number)}</option>`,
                 )
                 .join("");
           $("start").innerHTML = all;
@@ -1973,18 +1504,20 @@
         }
         function refreshEndOptions(preferred = "") {
           const start = $("start").value;
-          const opts =
+          $("end").innerHTML =
             '<option value="">Seleccione...</option>' +
             points
-              .filter((p) => p.number !== start)
+              .filter((point) => point.number !== start)
               .map(
-                (p) =>
-                  `<option value="${esc(p.number)}">${esc(p.number)}</option>`,
+                (point) =>
+                  `<option value="${esc(point.number)}">${esc(point.number)}</option>`,
               )
               .join("");
-          $("end").innerHTML = opts;
           if (preferred && preferred !== start && get(preferred))
             $("end").value = preferred;
+        }
+        function networkChoiceHtml(network, index) {
+          return `<div class="network-choice"><label class="network-main"><input type="checkbox" class="netChoice" value="${index}"><span class="swatch" style="background:${color(network.status)}"></span><span><b>${network.type}</b>${network.text ? " · " + esc(network.text) : ""}<br><small>${network.status}</small></span></label><label class="network-length">L: <input type="number" class="netLength" data-index="${index}" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled> m</label></div>`;
         }
         function showNetworks() {
           const list = nets(get($("start").value));
@@ -1994,54 +1527,78 @@
             return;
           }
           $("networkInfo").innerHTML =
-            '<div class="helper"><b>Seleccione la red que llega al punto final:</b></div>' +
-            list
-              .map(
-                (n, i) =>
-                  `<label class="network-choice"><span class="network-main"><input type="checkbox" class="netChoice" value="${i}"><span class="swatch" style="background:${color(n.status)}"></span><span><b>${n.type}</b>${n.text ? " · " + esc(n.text) : ""}</span></span><span>${n.status}</span></label>`,
-              )
-              .join("");
+            '<div class="helper"><b>Seleccione la red e indique su longitud:</b></div>' +
+            list.map(networkChoiceHtml).join("");
+          document.querySelectorAll(".netChoice").forEach(
+            (box) =>
+              (box.onchange = () => {
+                const input = document.querySelector(
+                  `.netLength[data-index="${box.value}"]`,
+                );
+                input.disabled = !box.checked;
+                if (!box.checked) input.value = "";
+                else input.focus();
+              }),
+          );
         }
         $("start").onchange = () => {
           refreshEndOptions();
           showNetworks();
         };
-        $("saveTramo").onclick = () => {
+        function saveTramo() {
           const start = $("start").value,
             end = $("end").value;
           if (!start || !end || start === end)
             return tell("Seleccione dos puntos diferentes.", true);
           const available = nets(get(start)),
-            idx = [...document.querySelectorAll(".netChoice:checked")].map(
-              (x) => +x.value,
-            ),
-            selected = idx.map((i) => available[i]).filter(Boolean);
+            selected = [];
+          document.querySelectorAll(".netChoice:checked").forEach((box) => {
+            const index = Number(box.value),
+              network = available[index],
+              length = Number(
+                document.querySelector(`.netLength[data-index="${index}"]`)
+                  ?.value,
+              );
+            if (network) selected.push({ network, length });
+          });
           if (!selected.length)
             return tell("Seleccione al menos una red MT o BT.", true);
+          const invalid = selected.find(
+            (item) => !Number.isFinite(item.length) || item.length <= 0,
+          );
+          if (invalid)
+            return tell(
+              `Ingrese una longitud válida para ${invalid.network.type}.`,
+              true,
+            );
           tramos.push({
             start,
             end,
-            networks: selected.map((n) => ({ ...n })),
+            networks: selected.map((item) => ({
+              ...item.network,
+              length: item.length,
+            })),
           });
           persist();
-          renderLines();
-          tell("Tramo guardado.");
-        };
+          refreshMapInformation(false);
+          tell("Tramo guardado y mapa actualizado.");
+        }
+        $("saveTramo").onclick = saveTramo;
         function tramoList() {
           $("tramoList").innerHTML = tramos.length
             ? tramos
                 .map(
-                  (t, i) =>
-                    `<div class="tramo-row"><div><b>${esc(t.start)} → ${esc(t.end)}</b><br><small>${t.networks.map((n) => n.type + " (" + n.status + ")").join(" · ")}</small></div><button class="danger delT" data-i="${i}">Eliminar</button></div>`,
+                  (tramo, index) =>
+                    `<div class="tramo-row"><div><b>${esc(tramo.start)} → ${esc(tramo.end)}</b><br><small>${tramo.networks.map((network) => `${network.type} (${network.status})${formatLength(network.length) ? ` · L: ${formatLength(network.length)} m` : ""}`).join("<br>")}</small></div><button class="danger delT" data-i="${index}">Eliminar</button></div>`,
                 )
                 .join("")
             : '<div class="helper">No hay tramos.</div>';
           document.querySelectorAll(".delT").forEach(
-            (b) =>
-              (b.onclick = () => {
-                tramos.splice(+b.dataset.i, 1);
+            (button) =>
+              (button.onclick = () => {
+                tramos.splice(Number(button.dataset.i), 1);
                 persist();
-                renderLines();
+                refreshMapInformation(false);
               }),
           );
         }
@@ -2088,7 +1645,7 @@
             ? points
                 .map(
                   (p, i) =>
-                    `<div class="point"><div class="point-head"><b>${esc(p.number)}</b><span>${p.mode}${Number.isFinite(+p.accuracy) ? " · GPS ±" + Math.round(+p.accuracy) + " m" : ""}</span></div><div class="point-row">${p.elements.map((e) => `• <span style="color:${color(elementColorStatus(e))}">${esc(elementSummary(e))}</span>`).join("<br>")}</div><div class="actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></div>`,
+                    `<div class="point"><div class="point-head"><b>${esc(p.number)}</b><span>${p.manuallyAdjusted ? "GPS ajustado" : p.mode}${Number.isFinite(+p.accuracy) ? " · ±" + Math.round(+p.accuracy) + " m" : ""}</span></div><div class="point-row">${p.elements.map((e) => `• <b>${esc(e.type)}:</b> <span style="color:${color(e.status)}">${esc(e.text)}</span> <b>(${esc(e.status)})</b>`).join("<br>")}</div><div class="actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></div>`,
                 )
                 .join("")
             : '<div class="helper">No hay puntos.</div>';
@@ -2105,10 +1662,13 @@
                   ? +p.accuracy
                   : null;
                 lastGpsTime = p.gpsTime || null;
+                originalGpsLongitude = p.originalLongitude ?? null;
+                originalGpsLatitude = p.originalLatitude ?? null;
+                gpsManuallyAdjusted = Boolean(p.manuallyAdjusted);
                 if (lastGpsAccuracy !== null) updateGpsQuality(lastGpsAccuracy);
                 $("elements").innerHTML = "";
                 p.elements.forEach((e, j) =>
-                  row(e.type, e.text, e.status, j === 0, e.details || {}),
+                  row(e.type, e.text, e.status, j === 0),
                 );
                 openView("reg");
               }),
@@ -2142,7 +1702,7 @@
             ["PUNTOS", 7],
             ["NUEVO", 3],
             ["REPOSICION", 1],
-            ["INTERVENIDO", 7],
+            ["EXISTENTE", 7],
           ].forEach((x) => {
             d += `0\nLAYER\n2\n${x[0]}\n70\n0\n62\n${x[1]}\n6\nCONTINUOUS\n`;
           });
@@ -2150,7 +1710,7 @@
           points.forEach((p) => {
             const [x, y] = xy(p),
               r = 1.2,
-              st = p.elements[0]?.status || "Intervenido",
+              st = p.elements[0]?.status || "Existente",
               layer = statusLayer(st),
               col = cadColor(st);
             const r0 = r / 2;
@@ -2168,10 +1728,9 @@
             const tx = x + r + 0.8;
             d += `0\nTEXT\n8\n${layer}\n62\n${col}\n10\n${tx}\n20\n${y}\n40\n1.5\n1\n${p.number}\n`;
             p.elements.forEach((e, i) => {
-              const effectiveStatus = elementColorStatus(e),
-                textLayer = statusLayer(effectiveStatus),
-                textColor = cadColor(effectiveStatus);
-              d += `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${tx}\n20\n${y - 2 - i * 1.5}\n40\n1\n1\n${dxfSafeText(elementSummary(e))}\n`;
+              const textLayer = statusLayer(e.status),
+                textColor = cadColor(e.status);
+              d += `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${tx}\n20\n${y - 2 - i * 1.5}\n40\n1\n1\n${getElementDisplayText(p, e)}\n`;
             });
           });
           tramos.forEach((t) => {
@@ -2262,6 +1821,7 @@
             tell("Nombre, puntos y tramos eliminados.");
           }
         };
+        $("refreshMap").onclick = () => refreshMapInformation(true);
         function updateConnection() {
           const online = navigator.onLine,
             b = $("connectionBadge");
@@ -2289,12 +1849,15 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 3.2</div>
+    <div class="version-app">V 3.4</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
-          navigator.serviceWorker.register("./sw.js").catch(console.error),
+          navigator.serviceWorker
+            .register("./sw.js", { updateViaCache: "none" })
+            .then((registration) => registration.update())
+            .catch(console.error),
         );
       }
     </script>
