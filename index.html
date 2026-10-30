@@ -2481,15 +2481,30 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.1</div>
+    <div class="version-app">V 4.2</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
-          navigator.serviceWorker
-            .register("./sw.js", { updateViaCache: "none" })
-            .then((registration) => registration.update())
-            .catch(console.error),
+          (() => {
+            let reloadingForUpdate = false;
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+              if (reloadingForUpdate) return;
+              reloadingForUpdate = true;
+              window.location.reload();
+            });
+            navigator.serviceWorker
+              .register("./sw.js", { updateViaCache: "none" })
+              .then((registration) => {
+                registration.update();
+                window.addEventListener("online", () => registration.update());
+                document.addEventListener("visibilitychange", () => {
+                  if (document.visibilityState === "visible")
+                    registration.update();
+                });
+              })
+              .catch(console.error);
+          })(),
         );
       }
     </script>
