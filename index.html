@@ -687,6 +687,29 @@
         background: #fff1f2 !important;
         box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.14) !important;
       }
+
+      .add-element-bottom {
+        position: sticky;
+        bottom: 10px;
+        z-index: 20;
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 0 4px;
+        margin-top: 8px;
+        pointer-events: none;
+      }
+
+      .add-element-bottom button {
+        pointer-events: auto;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+      }
+
+      @media (max-width: 640px) {
+        .add-element-bottom button {
+          width: 100%;
+          min-height: 46px;
+        }
+      }
     </style>
   </head>
 
@@ -784,6 +807,11 @@
               </button>
             </div>
             <div id="elements"></div>
+            <div class="add-element-bottom">
+              <button type="button" id="addBottom" class="secondary">
+                + Agregar otro elemento
+              </button>
+            </div>
             <div id="msg" class="status"></div>
             <div class="actions">
               <button class="primary">Guardar punto</button
@@ -1460,7 +1488,14 @@
           $("elements").appendChild(rowElement);
           bindSpecificFields(rowElement);
         }
-        $("add").onclick = () => row();
+        function addElementRow() {
+          row();
+          const newRow = $("elements").lastElementChild;
+          newRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+          newRow?.querySelector(".tp")?.focus();
+        }
+        $("add").onclick = addElementRow;
+        $("addBottom").onclick = addElementRow;
 
         function gpsMarkerIcon(manual = false) {
           return L.divIcon({
@@ -2447,7 +2482,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 3.9</div>
+    <div class="version-app">V 4.0</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
