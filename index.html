@@ -681,6 +681,12 @@
         text-align: right;
         font-size: 16px;
       }
+
+      .field-invalid {
+        border: 2px solid #dc3545 !important;
+        background: #fff1f2 !important;
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.14) !important;
+      }
     </style>
   </head>
 
@@ -701,7 +707,7 @@
             Total de registros: <span id="countInicio">0</span>
           </div>
           <h2>Registrar punto</h2>
-          <form id="form">
+          <form id="form" novalidate>
             <div class="grid">
               <div class="num">
                 <label>Numeración *</label
@@ -1756,6 +1762,11 @@
             details,
           };
         }
+        $("form").addEventListener("change", (event) => {
+          if (event.target.matches("select") && event.target.value)
+            event.target.classList.remove("field-invalid");
+        });
+
         $("form").onsubmit = (e) => {
           e.preventDefault();
           const number = $("numero").value.trim(),
@@ -1770,9 +1781,24 @@
               (select) =>
                 !select.closest(".hidden") && !select.disabled && !select.value,
             );
+          document
+            .querySelectorAll(".field-invalid")
+            .forEach((field) => field.classList.remove("field-invalid"));
           if (emptySelect) {
+            const fieldContainer = emptySelect.closest("div");
+            const fieldLabel = fieldContainer
+              ?.querySelector(":scope > label")
+              ?.textContent.replace("*", "")
+              .trim();
+            emptySelect.classList.add("field-invalid");
+            emptySelect.scrollIntoView({ behavior: "smooth", block: "center" });
             emptySelect.focus();
-            return tell("Complete todas las selecciones del elemento.", true);
+            return tell(
+              fieldLabel
+                ? `Seleccione una opción en: ${fieldLabel}.`
+                : "Complete la selección pendiente del elemento.",
+              true,
+            );
           }
           const missingCondition = elementRows.find((rowElement) => {
             const type = rowElement.querySelector(".tp")?.value;
@@ -2421,7 +2447,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 3.8</div>
+    <div class="version-app">V 3.9</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
