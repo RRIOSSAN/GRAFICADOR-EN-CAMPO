@@ -689,25 +689,24 @@
       }
 
       .add-element-bottom {
-        position: sticky;
-        bottom: 10px;
-        z-index: 20;
         display: flex;
         justify-content: flex-end;
-        padding: 10px 0 4px;
+        padding: 8px 0 4px;
         margin-top: 8px;
-        pointer-events: none;
       }
 
       .add-element-bottom button {
-        pointer-events: auto;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+        box-shadow: none;
       }
 
       @media (max-width: 640px) {
+        .add-element-bottom {
+          justify-content: stretch;
+        }
+
         .add-element-bottom button {
           width: 100%;
-          min-height: 46px;
+          min-height: 44px;
         }
       }
     </style>
@@ -2482,7 +2481,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.0</div>
+    <div class="version-app">V 4.1</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
