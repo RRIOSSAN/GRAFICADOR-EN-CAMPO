@@ -1947,16 +1947,12 @@
             description = element.text ? ` · ${element.text}` : "";
           return `${element.type}${detail ? ` · ${detail}` : ""}${description} (${element.type === "Transformador" ? element.details?.activeCondition || "Existente" : element.status === "Reposicion" ? "Reposición" : element.status})`;
         }
-        function graphElementParts(element) {
+        function graphElementLines(element, point, maxLength = 44) {
           const d = element.details || {};
           const condition =
-            element.type === "Transformador"
-              ? d.activeCondition || "Existente"
-              : element.status === "Reposicion"
-                ? "Reposición"
-                : element.status;
-          let name = element.type;
-          let detail = detailsText(element);
+            element.status === "Reposicion" ? "Reposición" : element.status;
+          let parts = [];
+
           switch (element.type) {
             case "Poste": {
               const materialCode =
@@ -1965,33 +1961,57 @@
                   : d.material === "Fibra"
                     ? "F"
                     : "";
-              detail = d.poste ? `${d.poste}${materialCode}` : "";
+              parts = [
+                "Poste",
+                d.poste ? `${d.poste}${materialCode}` : "",
+                element.text,
+                condition,
+              ];
               break;
             }
-            case "Transformador":
-              name = "TRF";
-              break;
+            case "Transformador": {
+              const first = [
+                "TRF",
+                d.activeCondition,
+                d.activeCondition === "Instalado" ? d.equipmentState : "",
+              ]
+                .filter(Boolean)
+                .join(" - ");
+              const second = [
+                d.ne && `N.E.: ${d.ne}`,
+                d.serial && `Serial: ${d.serial}`,
+                element.text,
+              ]
+                .filter(Boolean)
+                .join(" - ");
+              const lines = [`• ${first}`];
+              if (second) lines.push(`  ${second}`);
+              return lines;
+            }
             case "Cortacircuito":
-              name = "CC";
+              parts = ["CC", detailsText(element), element.text, condition];
               break;
             case "Red MT":
-              name = "MT";
+              parts = ["MT", detailsText(element), element.text, condition];
               break;
             case "Red BT":
-              name = "BT";
+              parts = ["BT", detailsText(element), element.text, condition];
               break;
             case "Cruce aereo":
-              name = "CRUCE";
+              parts = ["CRUCE", detailsText(element), element.text, condition];
               break;
+            default:
+              parts = [
+                element.type,
+                detailsText(element),
+                element.text,
+                condition,
+              ];
           }
-          const parts = [name, detail, element.text].filter(Boolean);
-          if (condition) parts.push(`(${condition})`);
-          return parts;
-        }
-        function graphElementLines(element, point, maxLength = 44) {
-          const parts = graphElementParts(element);
+
           const route = getNetworkRouteText(point, element).trim();
           if (route) parts.push(route);
+          parts = parts.filter(Boolean);
           const lines = [];
           let current = "•";
           parts.forEach((part) => {
@@ -2548,7 +2568,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.3</div>
+    <div class="version-app">V 4.4</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
