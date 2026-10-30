@@ -1,4 +1,4 @@
-const CACHE = "replanteo-pwa-v4.2";
+const CACHE = "replanteo-pwa-v4.3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,17 +6,15 @@ const APP_SHELL = [
   "./icon-192.png",
   "./icon-512.png",
 ];
-
-self.addEventListener("install", (event) => {
+self.addEventListener("install", (event) =>
   event.waitUntil(
     caches
       .open(CACHE)
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting()),
-  );
-});
-
-self.addEventListener("activate", (event) => {
+  ),
+);
+self.addEventListener("activate", (event) =>
   event.waitUntil(
     caches
       .keys()
@@ -26,20 +24,17 @@ self.addEventListener("activate", (event) => {
         ),
       )
       .then(() => self.clients.claim()),
-  );
-});
-
+  ),
+);
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-
   if (url.hostname.includes("arcgisonline.com")) {
     event.respondWith(
       fetch(event.request).catch(() => new Response("", { status: 503 })),
     );
     return;
   }
-
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
@@ -52,7 +47,6 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-
   event.respondWith(
     fetch(event.request)
       .then((response) => {

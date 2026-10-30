@@ -1350,7 +1350,12 @@
                 family,
               ) +
               `<div class="structure-voltage ${family === "MT" ? "" : "hidden"}">${selectField("sp-voltage", "Tensión", ["7,6 kV", "13,2 kV", "34,5 kV"], details.voltage)}</div>` +
-              selectField("sp-code", "Código", STRUCTURES[family], details.code)
+              selectField(
+                "sp-code",
+                "Código",
+                STRUCTURES[family] || [],
+                details.code,
+              )
             );
           }
           return "";
@@ -1942,6 +1947,64 @@
             description = element.text ? ` · ${element.text}` : "";
           return `${element.type}${detail ? ` · ${detail}` : ""}${description} (${element.type === "Transformador" ? element.details?.activeCondition || "Existente" : element.status === "Reposicion" ? "Reposición" : element.status})`;
         }
+        function graphElementParts(element) {
+          const d = element.details || {};
+          const condition =
+            element.type === "Transformador"
+              ? d.activeCondition || "Existente"
+              : element.status === "Reposicion"
+                ? "Reposición"
+                : element.status;
+          let name = element.type;
+          let detail = detailsText(element);
+          switch (element.type) {
+            case "Poste": {
+              const materialCode =
+                d.material === "Concreto"
+                  ? "C"
+                  : d.material === "Fibra"
+                    ? "F"
+                    : "";
+              detail = d.poste ? `${d.poste}${materialCode}` : "";
+              break;
+            }
+            case "Transformador":
+              name = "TRF";
+              break;
+            case "Cortacircuito":
+              name = "CC";
+              break;
+            case "Red MT":
+              name = "MT";
+              break;
+            case "Red BT":
+              name = "BT";
+              break;
+            case "Cruce aereo":
+              name = "CRUCE";
+              break;
+          }
+          const parts = [name, detail, element.text].filter(Boolean);
+          if (condition) parts.push(`(${condition})`);
+          return parts;
+        }
+        function graphElementLines(element, point, maxLength = 44) {
+          const parts = graphElementParts(element);
+          const route = getNetworkRouteText(point, element).trim();
+          if (route) parts.push(route);
+          const lines = [];
+          let current = "•";
+          parts.forEach((part) => {
+            const candidate = `${current}${current === "•" ? " " : " - "}${part}`;
+            if (current !== "•" && candidate.length > maxLength) {
+              lines.push(current);
+              current = `  ${part}`;
+            } else current = candidate;
+          });
+          if (current.trim()) lines.push(current);
+          return lines;
+        }
+
         function pairKey(a, b) {
           return [String(a), String(b)].sort().join("||");
         }
@@ -2359,11 +2422,15 @@
             }
             const tx = x + r + 0.8;
             d += `0\nTEXT\n8\n${layer}\n62\n${col}\n10\n${tx}\n20\n${y}\n40\n1.5\n1\n${p.number}\n`;
-            p.elements.forEach((e, i) => {
+            let textLineIndex = 0;
+            p.elements.forEach((e) => {
               const effectiveStatus = elementColorStatus(e),
                 textLayer = statusLayer(effectiveStatus),
                 textColor = cadColor(effectiveStatus);
-              d += `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${tx}\n20\n${y - 2 - i * 1.5}\n40\n1\n1\n${dxfSafeText(`${elementSummary(e)}${getNetworkRouteText(p, e)}`)}\n`;
+              graphElementLines(e, p).forEach((line) => {
+                d += `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${tx}\n20\n${y - 2 - textLineIndex * 1.5}\n40\n1\n1\n${dxfSafeText(line)}\n`;
+                textLineIndex += 1;
+              });
             });
           });
           tramos.forEach((t) => {
@@ -2481,7 +2548,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.2</div>
+    <div class="version-app">V 4.3</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
