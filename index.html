@@ -888,7 +888,11 @@
           <div id="ptsMsg" class="status"></div>
           <div class="actions">
             <button id="dxf" class="dark">Exportar DXF</button
-            ><button id="csv" class="blue">Exportar CSV</button>
+            ><button id="csv" class="blue">Exportar CSV</button
+            ><button type="button" id="importDxf" class="secondary">
+              Importar DXF
+            </button>
+            <input id="dxfFile" type="file" accept=".dxf" class="hidden" />
           </div>
         </div>
       </section>
@@ -1086,7 +1090,7 @@
           setMode(e.target.value);
           previewManual();
         };
-        const POST_HEIGHTS = [8, 10, 11, 12, 14, 16];
+        const POST_HEIGHTS = [8, 10, 12, 14, 16];
         const POST_LOADS = {
           Concreto: [510, 750, 1050, 1350, 1500, 2000, 3000],
           Fibra: [510, 750, 1050, 1350],
@@ -1204,6 +1208,8 @@
           );
         }
         function btCalibers(configuration) {
+          if (configuration === "ACSR")
+            return ["2", "4", "6", "8", "1/0", "2/0", "4/0"];
           const prefix = configuration === "Cuádruplex" ? "3×" : "2×";
           return BT_GAUGES.map((gauge) => `${prefix}${gauge}+${gauge} AWG`);
         }
@@ -1329,7 +1335,7 @@
               selectField(
                 "sp-configuration",
                 "Configuración",
-                ["Tríplex", "Cuádruplex"],
+                ["Tríplex", "Cuádruplex", "ACSR"],
                 configuration,
               ) +
               selectField(
@@ -2408,6 +2414,68 @@
           a.click();
           setTimeout(() => URL.revokeObjectURL(u), 500);
         }
+        function encodeProjectData(value) {
+          const bytes = new TextEncoder().encode(JSON.stringify(value));
+          let binary = "";
+          bytes.forEach((byte) => (binary += String.fromCharCode(byte)));
+          return btoa(binary);
+        }
+        function decodeProjectData(value) {
+          const binary = atob(value);
+          return JSON.parse(
+            new TextDecoder().decode(
+              Uint8Array.from(binary, (c) => c.charCodeAt(0)),
+            ),
+          );
+        }
+        function readProjectDataFromDxf(text) {
+          const prefix = "REPLANTEO_JSON:",
+            chunkPrefix = "REPLANTEO_JSON_PART:",
+            lines = String(text || "")
+              .replace(/\r/g, "")
+              .split("\n");
+          let legacy = "";
+          const chunks = [];
+          for (let i = 0; i < lines.length - 1; i += 1) {
+            if (lines[i].trim() !== "999") continue;
+            const value = lines[i + 1].trim();
+            if (value.startsWith(prefix)) {
+              legacy = value.slice(prefix.length);
+              break;
+            }
+            if (value.startsWith(chunkPrefix)) {
+              const separator = value.indexOf(":", chunkPrefix.length),
+                index = Number(value.slice(chunkPrefix.length, separator));
+              if (separator > -1 && Number.isInteger(index))
+                chunks[index] = value.slice(separator + 1);
+            }
+          }
+          const encoded = legacy || chunks.filter(Boolean).join("");
+          if (!encoded)
+            throw new Error(
+              "Este DXF no contiene los datos internos de la APP.",
+            );
+          return decodeProjectData(encoded);
+        }
+        function importProjectData(data) {
+          if (
+            !data ||
+            data.format !== "REPLANTEO_APP_DXF" ||
+            !Array.isArray(data.points) ||
+            !Array.isArray(data.tramos)
+          )
+            throw new Error(
+              "El archivo no contiene un proyecto válido de esta APP.",
+            );
+          points = data.points;
+          tramos = data.tramos;
+          projectName = String(data.projectName || "Proyecto importado");
+          $("projectName").value = projectName;
+          persist();
+          clear();
+          render();
+          openView("pts");
+        }
         $("dxf").onclick = () => {
           if (!validProjectName()) return;
           const exportName = safeFileName($("projectName").value);
@@ -2477,8 +2545,49 @@
               d += `0\nLWPOLYLINE\n8\n${la}\n62\n${ac}\n6\n${lt}\n48\n${lts}\n370\n30\n90\n4\n70\n0\n10\n${A[0]}\n20\n${A[1]}\n10\n${x2}\n20\n${y2}\n10\n${x3}\n20\n${y3}\n10\n${B[0]}\n20\n${B[1]}\n`;
             });
           });
+          const projectEncoded = encodeProjectData({
+            format: "REPLANTEO_APP_DXF",
+            version: 2,
+            projectName: $("projectName").value.trim(),
+            points,
+            tramos,
+          });
+          for (
+            let offset = 0, part = 0;
+            offset < projectEncoded.length;
+            offset += 180, part += 1
+          )
+            d += `999\nREPLANTEO_JSON_PART:${part}:${projectEncoded.slice(offset, offset + 180)}\n`;
           d += "0\nENDSEC\n0\nEOF\n";
           download(d, exportName + ".dxf", "application/dxf");
+        };
+        $("importDxf").onclick = () => $("dxfFile").click();
+        $("dxfFile").onchange = async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (!file) return;
+          try {
+            const data = readProjectDataFromDxf(await file.text());
+            if (
+              (points.length || tramos.length) &&
+              !confirm(
+                "La importación reemplazará el proyecto actual. ¿Desea continuar?",
+              )
+            )
+              return;
+            importProjectData(data);
+            tell(
+              `${points.length} puntos y ${tramos.length} tramos importados correctamente.`,
+              false,
+              "ptsMsg",
+            );
+          } catch (error) {
+            tell(
+              error?.message || "No fue posible importar el DXF.",
+              true,
+              "ptsMsg",
+            );
+          }
         };
         $("csv").onclick = () => {
           if (!validProjectName()) return;
@@ -2568,7 +2677,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.4</div>
+    <div class="version-app">V 5.0</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
