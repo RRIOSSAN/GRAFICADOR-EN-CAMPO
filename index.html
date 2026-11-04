@@ -750,6 +750,32 @@
         margin: 0 0 14px;
       }
 
+      .dxf-confirmation {
+        z-index: 10001;
+      }
+
+      .dxf-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 14px;
+        margin: 12px 0;
+        font-size: 13px;
+      }
+
+      .dxf-summary div {
+        min-width: 0;
+      }
+
+      .dxf-summary dt {
+        color: #5c6670;
+        font-weight: 700;
+      }
+
+      .dxf-summary dd {
+        margin: 2px 0 0;
+        overflow-wrap: anywhere;
+      }
+
       @media (max-width: 430px) {
         .project-actions {
           grid-template-columns: 1fr;
@@ -813,6 +839,26 @@
           </button>
           <button type="button" id="deleteProject" class="danger">
             Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="dxfConfirmation"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dxfConfirmationTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="dxfConfirmationTitle">Confirmar exportación DXF</h2>
+        <dl id="dxfSummary" class="dxf-summary"></dl>
+        <div class="project-actions">
+          <button type="button" id="confirmDxfExport" class="dark">
+            Exportar DXF
+          </button>
+          <button type="button" id="cancelDxfExport" class="secondary">
+            Cancelar
           </button>
         </div>
       </div>
@@ -2999,8 +3045,46 @@
           a.click();
           setTimeout(() => URL.revokeObjectURL(u), 500);
         }
-        $("dxf").onclick = () => {
+        function showDxfConfirmation() {
           if (!validProjectName()) return;
+          const elementCount = points.reduce(
+            (total, point) =>
+              total +
+              (Array.isArray(point.elements) ? point.elements.length : 0),
+            0,
+          );
+          const coordinateCount = points.filter((point) => latlng(point)).length;
+          const summary = [
+            ["Nombre del replanteo", projectName],
+            ["Puntos registrados", points.length],
+            ["Tramos registrados", tramos.length],
+            ["Total de elementos registrados", elementCount],
+            ["Coordenadas registradas", coordinateCount],
+            [
+              "Fecha y hora de exportación",
+              new Intl.DateTimeFormat("es-CO", {
+                dateStyle: "short",
+                timeStyle: "medium",
+              }).format(new Date()),
+            ],
+            ["Versión de la aplicación", "V 5.1"],
+          ];
+          $("dxfSummary").innerHTML = summary
+            .map(
+              ([label, value]) =>
+                `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`,
+            )
+            .join("");
+          $("dxfConfirmation").classList.remove("hidden");
+        }
+        $("dxf").onclick = showDxfConfirmation;
+        $("cancelDxfExport").onclick = () =>
+          $("dxfConfirmation").classList.add("hidden");
+        $("confirmDxfExport").onclick = () => {
+          $("dxfConfirmation").classList.add("hidden");
+          exportDxfFile();
+        };
+        function exportDxfFile() {
           const exportName = safeFileName($("projectName").value);
           let d =
             "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n2\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nLTYPE\n2\nDASHED\n70\n0\n3\nDashed line\n72\n65\n73\n2\n40\n4.0\n49\n1.0\n74\n0\n49\n-3.0\n74\n0\n0\nENDTAB\n0\nTABLE\n2\nLAYER\n70\n4\n";
@@ -3159,7 +3243,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 5.0</div>
+    <div class="version-app">V 5.1</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
