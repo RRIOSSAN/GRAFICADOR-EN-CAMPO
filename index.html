@@ -699,6 +699,67 @@
         box-shadow: none;
       }
 
+      .project-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.62);
+      }
+
+      .project-dialog {
+        width: min(100%, 520px);
+        max-height: 100%;
+        overflow-y: auto;
+        padding: 20px;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 16px 48px #0005;
+      }
+
+      .project-dialog h2 {
+        margin-bottom: 16px;
+        font-size: 20px;
+      }
+
+      .project-info {
+        min-height: 58px;
+        margin: 10px 0 16px;
+        padding: 10px;
+        border-radius: 8px;
+        background: #f3f5f7;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .project-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .project-actions button:first-child {
+        grid-column: 1/-1;
+      }
+
+      .project-name-editor {
+        margin: 0 0 14px;
+      }
+
+      @media (max-width: 430px) {
+        .project-actions {
+          grid-template-columns: 1fr;
+        }
+
+        .project-actions button:first-child {
+          grid-column: auto;
+        }
+      }
+
       @media (max-width: 640px) {
         .add-element-bottom {
           justify-content: stretch;
@@ -713,6 +774,49 @@
   </head>
 
   <body>
+    <div
+      id="projectModal"
+      class="project-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="projectModalTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="projectModalTitle">Seleccione el replanteo</h2>
+        <label for="savedProjects">Replanteos guardados</label>
+        <select id="savedProjects"></select>
+        <div id="projectInfo" class="project-info" aria-live="polite"></div>
+        <div id="projectNameEditor" class="project-name-editor hidden">
+          <label for="projectNameInput">Nombre del replanteo</label>
+          <input id="projectNameInput" type="text" maxlength="80" />
+          <div class="actions" style="margin-top: 8px">
+            <button type="button" id="saveProjectName" class="primary">
+              Guardar nombre
+            </button>
+            <button type="button" id="cancelProjectName" class="secondary">
+              Cancelar
+            </button>
+          </div>
+        </div>
+        <div class="project-actions">
+          <button type="button" id="openProject" class="primary">
+            Abrir seleccionado
+          </button>
+          <button type="button" id="newProject" class="blue">
+            + Nuevo replanteo
+          </button>
+          <button type="button" id="renameProject" class="secondary">
+            Renombrar
+          </button>
+          <button type="button" id="duplicateProject" class="secondary">
+            Duplicar
+          </button>
+          <button type="button" id="deleteProject" class="danger">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
     <header>
       <h1>APP de replanteo</h1>
       <p>Registro de apoyos, redes y exportación DXF</p>
@@ -817,6 +921,13 @@
               ><button type="button" id="clear" class="secondary">
                 Limpiar
               </button>
+              <button
+                type="button"
+                id="cancelEdit"
+                class="secondary hidden"
+              >
+                Cancelar edición
+              </button>
             </div>
           </form>
         </div>
@@ -863,6 +974,36 @@
         <div class="card">
           <h2>Puntos registrados</h2>
           <div class="project-box">
+            <label for="projectSelect">Replanteos guardados</label>
+            <select id="projectSelect"></select>
+            <div class="actions">
+              <button type="button" id="newProjectInline" class="primary">
+                + Nuevo
+              </button>
+              <button type="button" id="renameProjectInline" class="secondary">
+                Renombrar
+              </button>
+              <button type="button" id="duplicateProjectInline" class="secondary">
+                Duplicar
+              </button>
+              <button type="button" id="deleteProjectInline" class="danger">
+                Eliminar
+              </button>
+            </div>
+            <div id="projectNameEditorInline" class="hidden">
+              <label for="projectNameInputInline">Nombre del replanteo</label>
+              <input
+                id="projectNameInputInline"
+                type="text"
+                maxlength="80"
+                aria-describedby="projectNameHintInline"
+              />
+              <div id="projectNameHintInline" class="helper">
+                Presione Enter para guardar o Escape para cancelar.
+              </div>
+            </div>
+          </div>
+          <div class="project-box">
             <label for="projectName">Nombre del proyecto / archivo DXF *</label
             ><input
               id="projectName"
@@ -899,10 +1040,16 @@
       (() => {
         "use strict";
         const $ = (x) => document.getElementById(x),
-          key = "replanteo_v25";
+          projectsKey = "replanteo_projects",
+          activeProjectKey = "replanteo_active_project";
         let points = [],
           tramos = [],
           projectName = "",
+          projects = [],
+          activeProjectIndex = 0,
+          pendingProjectNameAction = "",
+          pendingInlineProjectAction = "",
+          pendingInlineProjectIndex = -1,
           mode = "XY",
           edit = -1,
           watch = null,
@@ -986,26 +1133,440 @@
           el.className = "status " + (e ? "error" : "ok");
           setTimeout(() => (el.className = "status"), 3000);
         }
-        function load() {
+        function normalizeProject(value) {
+          if (!value || typeof value !== "object" || Array.isArray(value))
+            return null;
+          return {
+            name: String(value.name ?? value.projectName ?? ""),
+            points: Array.isArray(value.points) ? value.points : [],
+            tramos: Array.isArray(value.tramos) ? value.tramos : [],
+          };
+        }
+        function parseProjects(raw) {
+          let value;
           try {
-            const v = JSON.parse(localStorage.getItem(key) || "{}");
-            points = v.points || [];
-            tramos = v.tramos || [];
-            projectName = String(v.projectName || "");
-          } catch {
-            points = [];
-            tramos = [];
-            projectName = "";
+            value = JSON.parse(raw);
+          } catch (error) {
+            console.error("No se pudieron leer los replanteos guardados.", error);
+            return null;
           }
+          const records = Array.isArray(value)
+            ? value
+            : Array.isArray(value?.projects)
+              ? value.projects
+              : value &&
+                  (Array.isArray(value.points) ||
+                    Array.isArray(value.tramos) ||
+                    "projectName" in value ||
+                    "name" in value)
+                ? [value]
+                : [];
+          return records.map(normalizeProject).filter(Boolean);
+        }
+        function versionRank(keyName) {
+          const suffix = keyName.match(/_v(.+)$/i)?.[1] || "";
+          return suffix.match(/\d+(?:\.\d+)*/)?.[0]
+            ?.split(".")
+            .map(Number) || [0];
+        }
+        function compareVersionKeys(a, b) {
+          const left = versionRank(a),
+            right = versionRank(b);
+          for (let i = 0; i < Math.max(left.length, right.length); i++) {
+            const difference = (right[i] || 0) - (left[i] || 0);
+            if (difference) return difference;
+          }
+          return a.localeCompare(b);
+        }
+        function getLegacyStorageKeys() {
+          return Array.from({ length: localStorage.length }, (_, i) =>
+            localStorage.key(i),
+          )
+            .filter(
+              (storageKey) =>
+                storageKey &&
+                (/^replanteo_(?:projects|active_project)_v.+$/i.test(
+                  storageKey,
+                ) ||
+                  /^replanteo_v.+$/i.test(storageKey)),
+            )
+            .sort(compareVersionKeys);
+        }
+        function resolveStoredActive(raw, list) {
+          if (raw === null) return -1;
+          let value = raw;
+          try {
+            value = JSON.parse(raw);
+          } catch {
+            // Legacy active-project values may be plain project names.
+          }
+          if (typeof value === "number" && Number.isInteger(value))
+            return value >= 0 && value < list.length ? value : -1;
+          const byName = list.findIndex(
+            (project) => project.name === String(value),
+          );
+          if (byName >= 0) return byName;
+          if (typeof value === "string" && /^\d+$/.test(value)) {
+            const index = Number(value);
+            return index < list.length ? index : -1;
+          }
+          return -1;
+        }
+        function resolveLegacyActive(projectsRaw, activeRaw, list) {
+          const basicMatch = resolveStoredActive(activeRaw, list);
+          if (basicMatch >= 0 || !projectsRaw || activeRaw === null)
+            return basicMatch;
+          let storedProjects, storedActive;
+          try {
+            storedProjects = JSON.parse(projectsRaw);
+            storedActive = JSON.parse(activeRaw);
+          } catch {
+            return basicMatch;
+          }
+          const records = Array.isArray(storedProjects)
+            ? storedProjects
+            : storedProjects?.projects;
+          const activeValue =
+            storedActive && typeof storedActive === "object"
+              ? (storedActive.id ??
+                storedActive.projectId ??
+                storedActive.name ??
+                storedActive.index)
+              : storedActive;
+          const index = Array.isArray(records)
+            ? records.findIndex(
+                (record) =>
+                  String(
+                    record?.id ??
+                      record?.projectId ??
+                      record?.name ??
+                      record?.projectName ??
+                      "",
+                  ) === String(activeValue),
+              )
+            : -1;
+          return index >= 0 ? index : basicMatch;
+        }
+        function migrateProjects() {
+          const keys = getLegacyStorageKeys(),
+            projectKeys = keys.filter((storageKey) =>
+              /^replanteo_projects_v/i.test(storageKey),
+            ),
+            singleProjectKeys = keys.filter((storageKey) =>
+              /^replanteo_v/i.test(storageKey),
+            ),
+            activeKeys = keys.filter((storageKey) =>
+              /^replanteo_active_project_v/i.test(storageKey),
+            );
+          const sourceKey = projectKeys[0],
+            singleKey = singleProjectKeys[0];
+          projects = sourceKey
+            ? (parseProjects(localStorage.getItem(sourceKey)) || [])
+            : [];
+          let migratedActive = sourceKey
+            ? resolveLegacyActive(
+                localStorage.getItem(sourceKey),
+                localStorage.getItem(
+                  sourceKey.replace(
+                    /^replanteo_projects/i,
+                    "replanteo_active_project",
+                  ),
+                ),
+                projects,
+              )
+            : -1;
+          if (singleKey) {
+            const legacyProjects = parseProjects(
+              localStorage.getItem(singleKey),
+            );
+            const legacyProject = legacyProjects?.[0];
+            if (legacyProject) {
+              const sameName = projects.findIndex(
+                (project) => project.name === legacyProject.name,
+              );
+              if (sameName < 0) projects.push(legacyProject);
+              migratedActive = projects.findIndex(
+                (project) => project.name === legacyProject.name,
+              );
+            }
+          }
+          if (migratedActive < 0 && activeKeys.length)
+            migratedActive = resolveStoredActive(
+              localStorage.getItem(activeKeys[0]),
+              projects,
+            );
+          return migratedActive;
+        }
+        function loadProject(index) {
+          activeProjectIndex = index;
+          const current = projects[activeProjectIndex];
+          points = current.points || [];
+          tramos = current.tramos || [];
+          projectName = String(current.name || "");
           $("projectName").value = projectName;
+        }
+        function load() {
+          const stableProjects = localStorage.getItem(projectsKey);
+          if (stableProjects !== null) {
+            projects = parseProjects(stableProjects) || [];
+            activeProjectIndex = resolveStoredActive(
+              localStorage.getItem(activeProjectKey),
+              projects,
+            );
+          } else {
+            activeProjectIndex = migrateProjects();
+          }
+          if (!projects.length) {
+            projects = [{ name: "", points: [], tramos: [] }];
+            activeProjectIndex = 0;
+          }
+          if (
+            activeProjectIndex < 0 ||
+            activeProjectIndex >= projects.length
+          )
+            activeProjectIndex = 0;
+          loadProject(activeProjectIndex);
+          persist();
         }
         function persist() {
           projectName = $("projectName").value.trim();
+          projects[activeProjectIndex] = {
+            name: projectName,
+            points,
+            tramos,
+          };
+          localStorage.setItem(projectsKey, JSON.stringify(projects));
           localStorage.setItem(
-            key,
-            JSON.stringify({ projectName, points, tramos }),
+            activeProjectKey,
+            String(activeProjectIndex),
           );
+          renderProjectSelector();
         }
+        function selectedProjectIndex(selectorId = "savedProjects") {
+          const index = Number($(selectorId).value);
+          return Number.isInteger(index) && projects[index] ? index : -1;
+        }
+        function renderProjectSelector() {
+          ["savedProjects", "projectSelect"].forEach((selectorId) => {
+            const selector = $(selectorId);
+            if (!selector) return;
+            const selected = Number(selector.value);
+            selector.innerHTML = projects
+              .map(
+                (project, index) =>
+                  `<option value="${index}">${esc(project.name || "Sin nombre")}</option>`,
+              )
+              .join("");
+            selector.value =
+              Number.isInteger(selected) && projects[selected]
+                ? String(selected)
+                : String(activeProjectIndex);
+          });
+          updateProjectInfo();
+        }
+        function selectActiveProject() {
+          ["savedProjects", "projectSelect"].forEach((selectorId) => {
+            const selector = $(selectorId);
+            if (selector) selector.value = String(activeProjectIndex);
+          });
+          renderProjectSelector();
+        }
+        function updateProjectInfo() {
+          const index = selectedProjectIndex(),
+            project = projects[index];
+          $("projectInfo").textContent = project
+            ? `${project.name || "Sin nombre"} · ${project.points.length} puntos · ${project.tramos.length} tramos`
+            : "Seleccione un replanteo guardado.";
+        }
+        function closeProjectModal() {
+          $("projectNameEditor").classList.add("hidden");
+          $("projectModal").classList.add("hidden");
+        }
+        function activateProject(index) {
+          if (!projects[index]) return;
+          persist();
+          loadProject(index);
+          selectActiveProject();
+          render();
+          closeProjectModal();
+        }
+        function showProjectNameEditor(action) {
+          pendingProjectNameAction = action;
+          const editor = $("projectNameEditor"),
+            input = $("projectNameInput"),
+            selected = projects[selectedProjectIndex()];
+          input.value = action === "rename" ? selected?.name || "" : "";
+          editor.classList.remove("hidden");
+          input.focus();
+        }
+        function saveProjectName() {
+          const name = $("projectNameInput").value.trim(),
+            index = selectedProjectIndex();
+          if (!name) {
+            $("projectInfo").textContent =
+              "Ingrese un nombre para el replanteo.";
+            $("projectNameInput").focus();
+            return;
+          }
+          if (pendingProjectNameAction === "create") {
+            persist();
+            projects.push({ name, points: [], tramos: [] });
+            activeProjectIndex = projects.length - 1;
+            loadProject(activeProjectIndex);
+            persist();
+            selectActiveProject();
+            render();
+            closeProjectModal();
+            return;
+          }
+          if (index < 0 || !projects[index]) return;
+          persist();
+          projects[index].name = name;
+          if (index === activeProjectIndex) {
+            projectName = name;
+            $("projectName").value = name;
+          }
+          persist();
+          renderProjectSelector();
+          $("savedProjects").value = String(index);
+          $("projectNameEditor").classList.add("hidden");
+          pendingProjectNameAction = "";
+        }
+        function duplicateSelectedProject(
+          selectorId = "savedProjects",
+          closeModal = true,
+        ) {
+          const index = selectedProjectIndex(selectorId);
+          if (index < 0) return;
+          persist();
+          const source = projects[index],
+            copy = JSON.parse(JSON.stringify(source));
+          projects.push({
+            name: copy.name,
+            points: copy.points,
+            tramos: copy.tramos,
+          });
+          activeProjectIndex = projects.length - 1;
+          loadProject(activeProjectIndex);
+          persist();
+          selectActiveProject();
+          render();
+          if (closeModal) closeProjectModal();
+        }
+        function deleteSelectedProject(selectorId = "savedProjects") {
+          const index = selectedProjectIndex(selectorId);
+          if (index < 0 || !projects[index]) return;
+          if (!confirm("¿Eliminar el replanteo seleccionado?")) return;
+          persist();
+          const wasActive = index === activeProjectIndex;
+          projects.splice(index, 1);
+          if (!projects.length) {
+            projects = [{ name: "", points: [], tramos: [] }];
+            activeProjectIndex = 0;
+            loadProject(0);
+            persist();
+            render();
+          } else if (wasActive) {
+            activeProjectIndex = Math.min(index, projects.length - 1);
+            loadProject(activeProjectIndex);
+            persist();
+            render();
+          } else {
+            if (index < activeProjectIndex) activeProjectIndex -= 1;
+            persist();
+          }
+          selectActiveProject();
+        }
+        $("savedProjects").addEventListener("change", updateProjectInfo);
+        $("openProject").addEventListener("click", () => {
+          const index = selectedProjectIndex();
+          if (index >= 0) activateProject(index);
+        });
+        $("newProject").addEventListener("click", () =>
+          showProjectNameEditor("create"),
+        );
+        $("renameProject").addEventListener("click", () =>
+          showProjectNameEditor("rename"),
+        );
+        $("saveProjectName").addEventListener("click", saveProjectName);
+        $("cancelProjectName").addEventListener("click", () => {
+          pendingProjectNameAction = "";
+          $("projectNameEditor").classList.add("hidden");
+        });
+        $("duplicateProject").addEventListener(
+          "click",
+          duplicateSelectedProject,
+        );
+        $("deleteProject").addEventListener("click", deleteSelectedProject);
+        function showInlineProjectNameEditor(action) {
+          pendingInlineProjectAction = action;
+          pendingInlineProjectIndex =
+            action === "rename" ? selectedProjectIndex("projectSelect") : -1;
+          const selected = projects[pendingInlineProjectIndex],
+            editor = $("projectNameEditorInline"),
+            input = $("projectNameInputInline");
+          input.value = action === "rename" ? selected?.name || "" : "";
+          editor.classList.remove("hidden");
+          input.focus();
+        }
+        function saveInlineProjectName() {
+          const name = $("projectNameInputInline").value.trim();
+          if (!name) {
+            $("projectNameInputInline").focus();
+            return;
+          }
+          if (pendingInlineProjectAction === "create") {
+            persist();
+            projects.push({ name, points: [], tramos: [] });
+            activeProjectIndex = projects.length - 1;
+            loadProject(activeProjectIndex);
+            persist();
+            selectActiveProject();
+            render();
+          } else {
+            const index = pendingInlineProjectIndex;
+            if (index < 0 || !projects[index]) return;
+            persist();
+            projects[index].name = name;
+            if (index === activeProjectIndex) {
+              projectName = name;
+              $("projectName").value = name;
+            }
+            persist();
+            $("projectSelect").value = String(index);
+            $("savedProjects").value = String(activeProjectIndex);
+          }
+          pendingInlineProjectAction = "";
+          pendingInlineProjectIndex = -1;
+          $("projectNameEditorInline").classList.add("hidden");
+          renderProjectSelector();
+        }
+        $("projectSelect").addEventListener("change", () => {
+          const index = selectedProjectIndex("projectSelect");
+          if (index >= 0) activateProject(index);
+        });
+        $("newProjectInline").addEventListener("click", () =>
+          showInlineProjectNameEditor("create"),
+        );
+        $("renameProjectInline").addEventListener("click", () =>
+          showInlineProjectNameEditor("rename"),
+        );
+        $("projectNameInputInline").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            saveInlineProjectName();
+          } else if (event.key === "Escape") {
+            pendingInlineProjectAction = "";
+            pendingInlineProjectIndex = -1;
+            $("projectNameEditorInline").classList.add("hidden");
+          }
+        });
+        $("duplicateProjectInline").addEventListener("click", () =>
+          duplicateSelectedProject("projectSelect", false),
+        );
+        $("deleteProjectInline").addEventListener("click", () =>
+          deleteSelectedProject("projectSelect"),
+        );
         function validProjectName() {
           const n = $("projectName").value.trim();
           if (!n) {
@@ -1049,10 +1610,7 @@
         }
         $("projectName").addEventListener("input", () => {
           projectName = $("projectName").value.trim();
-          localStorage.setItem(
-            key,
-            JSON.stringify({ projectName, points, tramos }),
-          );
+          persist();
         });
         function openView(id) {
           document
@@ -1732,6 +2290,7 @@
           row();
           setMode("XY");
           edit = -1;
+          $("cancelEdit").classList.add("hidden");
           lastGpsAccuracy = null;
           lastGpsTime = null;
           $("gpsPreview").classList.remove("active");
@@ -1740,6 +2299,11 @@
           $("gps").textContent = "Tomar coordenada con GPS";
         }
         $("clear").onclick = clear;
+        function cancelEdit() {
+          if (edit < 0) return;
+          clear();
+        }
+        $("cancelEdit").onclick = cancelEdit;
         function readElementDetails(rowElement, type) {
           const value = (selector) =>
             rowElement.querySelector(selector)?.value || "";
@@ -2375,6 +2939,7 @@
               (b.onclick = () => {
                 const p = points[+b.dataset.i];
                 edit = +b.dataset.i;
+                $("cancelEdit").classList.remove("hidden");
                 $("numero").value = p.number;
                 setMode(p.mode);
                 $("c1").value = p.c1;
@@ -2538,7 +3103,7 @@
             tramos = [];
             projectName = "";
             $("projectName").value = "";
-            localStorage.removeItem(key);
+            persist();
             clear();
             render();
             tell("Nombre, puntos y tramos eliminados.");
@@ -2571,7 +3136,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.8</div>
+    <div class="version-app">V 4.9</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
