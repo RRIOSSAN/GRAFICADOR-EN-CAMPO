@@ -776,6 +776,14 @@
         overflow-wrap: anywhere;
       }
 
+      .dxf-import-choice-message {
+        margin: 8px 0 16px;
+        color: #475569;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-line;
+      }
+
       @media (max-width: 430px) {
         .project-actions {
           grid-template-columns: 1fr;
@@ -858,6 +866,53 @@
             Exportar DXF
           </button>
           <button type="button" id="cancelDxfExport" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="dxfImportSummaryModal"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dxfImportSummaryTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="dxfImportSummaryTitle">Confirmar importación DXF</h2>
+        <dl id="dxfImportSummary" class="dxf-summary"></dl>
+        <div class="project-actions">
+          <button type="button" id="confirmDxfImport" class="primary">
+            Importar
+          </button>
+          <button type="button" id="cancelDxfImport" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="dxfImportChoiceModal"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dxfImportChoiceTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="dxfImportChoiceTitle">Proyecto actual con información</h2>
+        <p class="dxf-import-choice-message">
+          El proyecto actual contiene información registrada.
+
+          Seleccione cómo desea continuar.
+        </p>
+        <div class="project-actions">
+          <button type="button" id="addDxfImport" class="primary">
+            Agregar al proyecto actual
+          </button>
+          <button type="button" id="replaceDxfImport" class="danger">
+            Reemplazar proyecto actual
+          </button>
+          <button type="button" id="cancelDxfImportChoice" class="secondary">
             Cancelar
           </button>
         </div>
@@ -1076,6 +1131,15 @@
           <div class="actions">
             <button id="dxf" class="dark">Exportar DXF</button
             ><button id="csv" class="blue">Exportar CSV</button>
+            <button type="button" id="importDxf" class="secondary">
+              Importar DXF
+            </button>
+            <input
+              type="file"
+              id="dxfImportFile"
+              accept=".dxf,application/dxf"
+              class="hidden"
+            />
           </div>
         </div>
       </section>
@@ -1091,6 +1155,7 @@
         let points = [],
           tramos = [],
           projectName = "",
+          pendingDxfImport = null,
           projects = [],
           activeProjectIndex = 0,
           pendingProjectNameAction = "",
@@ -3067,7 +3132,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V 5.1"],
+            ["Versión de la aplicación", "V 5.2"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3084,6 +3149,207 @@
           $("dxfConfirmation").classList.add("hidden");
           exportDxfFile();
         };
+        function encodeDxfMetadata() {
+          const metadata = {
+            format: "APP_REPLANTEO",
+            schema: 1,
+            version: "V 5.2",
+            exportedAt: new Date().toISOString(),
+            project: { name: projectName, points, tramos },
+          };
+          const bytes = new TextEncoder().encode(JSON.stringify(metadata));
+          let binary = "";
+          for (let offset = 0; offset < bytes.length; offset += 0x8000)
+            binary += String.fromCharCode(
+              ...bytes.subarray(offset, offset + 0x8000),
+            );
+          const base64 = btoa(binary),
+            chunks = base64.match(/.{1,180}/g) || [""];
+          return chunks
+            .map(
+              (chunk, index) =>
+                `999\nAPP_REPLANTEO_JSON:${index + 1}/${chunks.length}:${chunk}\n`,
+            )
+            .join("");
+        }
+        function readDxfMetadata(contents) {
+          const matches = [
+            ...contents.matchAll(
+              /^999\r?\nAPP_REPLANTEO_JSON:(\d+)\/(\d+):([A-Za-z0-9+/=]+)\r?$/gm,
+            ),
+          ];
+          if (!matches.length) return null;
+          const total = Number(matches[0][2]);
+          if (!Number.isInteger(total) || total < 1 || matches.length !== total)
+            return null;
+          const chunks = new Array(total);
+          for (const match of matches) {
+            const index = Number(match[1]) - 1;
+            if (
+              Number(match[2]) !== total ||
+              index < 0 ||
+              index >= total ||
+              chunks[index] !== undefined
+            )
+              return null;
+            chunks[index] = match[3];
+          }
+          if (chunks.some((chunk) => chunk === undefined)) return null;
+          try {
+            const binary = atob(chunks.join("")),
+              bytes = Uint8Array.from(binary, (character) =>
+                character.charCodeAt(0),
+              ),
+              metadata = JSON.parse(new TextDecoder().decode(bytes));
+            const imported = metadata?.project;
+            if (
+              metadata?.format !== "APP_REPLANTEO" ||
+              metadata?.schema !== 1 ||
+              typeof metadata?.version !== "string" ||
+              typeof metadata?.exportedAt !== "string" ||
+              !Number.isFinite(Date.parse(metadata.exportedAt)) ||
+              !imported ||
+              typeof imported.name !== "string" ||
+              !Array.isArray(imported.points) ||
+              !Array.isArray(imported.tramos) ||
+              imported.points.some(
+                (point) =>
+                  !point ||
+                  typeof point !== "object" ||
+                  typeof point.number !== "string" ||
+                  !Array.isArray(point.elements) ||
+                  point.elements.some(
+                    (element) => !element || typeof element !== "object",
+                  ),
+              ) ||
+              imported.tramos.some(
+                (tramo) =>
+                  !tramo ||
+                  typeof tramo !== "object" ||
+                  typeof tramo.start !== "string" ||
+                  typeof tramo.end !== "string" ||
+                  !Array.isArray(tramo.networks) ||
+                  tramo.networks.some(
+                    (network) => !network || typeof network !== "object",
+                  ),
+              )
+            )
+              return null;
+            return { ...metadata, project: imported };
+          } catch {
+            return null;
+          }
+        }
+        function importedElementCount(project) {
+          return project.points.reduce(
+            (total, point) => total + point.elements.length,
+            0,
+          );
+        }
+        function formatImportDate(value) {
+          return new Intl.DateTimeFormat("es-CO", {
+            dateStyle: "short",
+            timeStyle: "medium",
+          }).format(new Date(value));
+        }
+        function showDxfImportSummary(file, metadata) {
+          const summary = [
+            ["Nombre del archivo", file.name],
+            ["Nombre del replanteo", metadata.project.name],
+            ["Fecha de exportación", formatImportDate(metadata.exportedAt)],
+            ["Versión de origen", metadata.version],
+            ["Cantidad de puntos", metadata.project.points.length],
+            ["Cantidad de tramos", metadata.project.tramos.length],
+            [
+              "Total de elementos registrados",
+              importedElementCount(metadata.project),
+            ],
+          ];
+          $("dxfImportSummary").innerHTML = summary
+            .map(
+              ([label, value]) =>
+                `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`,
+            )
+            .join("");
+          $("dxfImportSummaryModal").classList.remove("hidden");
+        }
+        async function readSelectedDxfFile(file) {
+          try {
+            const metadata = readDxfMetadata(await file.text());
+            if (!metadata)
+              return tell(
+                "El archivo seleccionado no contiene datos de proyecto compatibles con esta APP.",
+                true,
+                "ptsMsg",
+              );
+            pendingDxfImport = metadata;
+            showDxfImportSummary(file, metadata);
+          } catch (error) {
+            console.error("No fue posible leer el archivo DXF seleccionado.", error);
+            tell(
+              "No fue posible leer el archivo DXF seleccionado.",
+              true,
+              "ptsMsg",
+            );
+          }
+        }
+        $("importDxf").onclick = () => $("dxfImportFile").click();
+        $("dxfImportFile").addEventListener("change", (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) readSelectedDxfFile(file);
+        });
+        function closeDxfImportDialogs() {
+          $("dxfImportSummaryModal").classList.add("hidden");
+          $("dxfImportChoiceModal").classList.add("hidden");
+          pendingDxfImport = null;
+        }
+        $("cancelDxfImport").onclick = closeDxfImportDialogs;
+        $("cancelDxfImportChoice").onclick = closeDxfImportDialogs;
+        $("confirmDxfImport").onclick = () => {
+          if (!pendingDxfImport) return;
+          $("dxfImportSummaryModal").classList.add("hidden");
+          if (points.length || tramos.length)
+            $("dxfImportChoiceModal").classList.remove("hidden");
+          else
+            applyDxfImport("replace");
+        };
+        function applyDxfImport(mode) {
+          if (!pendingDxfImport) return;
+          const imported = pendingDxfImport.project;
+          let skippedPoints = 0;
+          if (mode === "replace") {
+            points = imported.points;
+            tramos = imported.tramos;
+            projectName = imported.name.trim();
+            $("projectName").value = projectName;
+          } else {
+            const existingNames = new Set(
+              points.map((point) => String(point.number).trim()),
+            );
+            imported.points.forEach((point) => {
+              const name = point.number.trim();
+              if (existingNames.has(name)) skippedPoints += 1;
+              else {
+                existingNames.add(name);
+                points.push(point);
+              }
+            });
+            tramos.push(...imported.tramos);
+          }
+          persist();
+          render();
+          closeDxfImportDialogs();
+          tell(
+            skippedPoints
+              ? `Importación completada. Se omitieron ${skippedPoints} puntos con nombres duplicados.`
+              : "Importación DXF completada.",
+            false,
+            "ptsMsg",
+          );
+        }
+        $("addDxfImport").onclick = () => applyDxfImport("add");
+        $("replaceDxfImport").onclick = () => applyDxfImport("replace");
         function exportDxfFile() {
           const exportName = safeFileName($("projectName").value);
           let d =
@@ -3153,6 +3419,7 @@
             });
           });
           d += "0\nENDSEC\n0\nEOF\n";
+          d = d.replace("0\nEOF\n", encodeDxfMetadata() + "0\nEOF\n");
           download(d, exportName + ".dxf", "application/dxf");
         };
         $("csv").onclick = () => {
@@ -3243,7 +3510,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 5.1</div>
+    <div class="version-app">V 5.2</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
