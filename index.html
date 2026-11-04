@@ -2379,6 +2379,15 @@
             c2 = +$("c2").value;
           if (!number || !Number.isFinite(c1) || !Number.isFinite(c2))
             return tell("Complete numeración y coordenadas.", true);
+          if (
+            points.some(
+              (point, index) => point.number === number && index !== edit,
+            )
+          )
+            return tell(
+              "Ya existe un punto con ese nombre dentro del replanteo. Utilice un nombre diferente.",
+              true,
+            );
           const elementRows = [...document.querySelectorAll(".element-row")];
           const emptySelect = elementRows
             .flatMap((rowElement) => [...rowElement.querySelectorAll("select")])
@@ -2613,8 +2622,9 @@
             index = all.findIndex(
               (x) => x.tramo === t && x.networkIndex === networkIndex,
             ),
-            center = (all.length - 1) / 2;
-          return (center - index) * 2;
+            center = (all.length - 1) / 2,
+            direction = String(t.start) <= String(t.end) ? 1 : -1;
+          return (center - index) * 2 * direction;
         }
         function initMap() {
           map = L.map("map").setView([7.89, -72.5], 13);
@@ -2954,6 +2964,19 @@
                   row(e.type, e.text, e.status, j === 0, e.details || {}),
                 );
                 openView("reg");
+                const location = latlng(p),
+                  accuracy =
+                    p.accuracy !== null &&
+                    p.accuracy !== undefined &&
+                    Number.isFinite(Number(p.accuracy))
+                      ? Number(p.accuracy)
+                      : null;
+                $("gpsPreview").classList.remove("active");
+                if (accuracy === null && accCircle) {
+                  mini.removeLayer(accCircle);
+                  accCircle = null;
+                }
+                if (location) miniShow(location[0], location[1], accuracy);
               }),
           );
           document.querySelectorAll(".del").forEach(
@@ -3136,7 +3159,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 4.9</div>
+    <div class="version-app">V 5.0</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
