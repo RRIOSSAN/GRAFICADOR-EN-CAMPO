@@ -1203,6 +1203,22 @@
               <div id="projectNameHintInline" class="helper">
                 Presione Enter para guardar o Escape para cancelar.
               </div>
+              <div class="actions">
+                <button
+                  type="button"
+                  id="saveProjectNameInline"
+                  class="primary"
+                >
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  id="cancelProjectNameInline"
+                  class="secondary"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
           <div class="project-box">
@@ -1759,6 +1775,25 @@
           $("projectNameEditorInline").classList.add("hidden");
           renderProjectSelector();
         }
+        function cancelInlineProjectName() {
+          if (pendingInlineProjectAction === "rename") {
+            const project = projects[pendingInlineProjectIndex];
+            $("projectNameInputInline").value = project?.name || "";
+          } else {
+            $("projectNameInputInline").value = "";
+          }
+          pendingInlineProjectAction = "";
+          pendingInlineProjectIndex = -1;
+          $("projectNameEditorInline").classList.add("hidden");
+        }
+        $("saveProjectNameInline").addEventListener(
+          "click",
+          saveInlineProjectName,
+        );
+        $("cancelProjectNameInline").addEventListener(
+          "click",
+          cancelInlineProjectName,
+        );
         $("projectSelect").addEventListener("change", () => {
           const index = selectedProjectIndex("projectSelect");
           if (index >= 0) activateProject(index);
@@ -1774,9 +1809,7 @@
             event.preventDefault();
             saveInlineProjectName();
           } else if (event.key === "Escape") {
-            pendingInlineProjectAction = "";
-            pendingInlineProjectIndex = -1;
-            $("projectNameEditorInline").classList.add("hidden");
+            cancelInlineProjectName();
           }
         });
         $("duplicateProjectInline").addEventListener("click", () =>
