@@ -992,15 +992,16 @@
       aria-labelledby="dxfImportChoiceTitle"
     >
       <div class="project-dialog">
-        <h2 id="dxfImportChoiceTitle">Proyecto actual con información</h2>
+        <h2 id="dxfImportChoiceTitle">Proyecto actual</h2>
         <p class="dxf-import-choice-message">
-          El proyecto actual contiene información registrada.
-
           Seleccione cómo desea continuar.
         </p>
         <div class="project-actions">
           <button type="button" id="addDxfImport" class="primary">
             Agregar al proyecto actual
+          </button>
+          <button type="button" id="newDxfImport" class="blue">
+            Crear nuevo replanteo
           </button>
           <button type="button" id="replaceDxfImport" class="danger">
             Reemplazar proyecto actual
@@ -3373,7 +3374,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V 5.3"],
+            ["Versión de la aplicación", "V5.3.1-BETA"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3397,7 +3398,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V 5.3",
+            version: "V5.3.1-BETA",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -3553,10 +3554,7 @@
         $("confirmDxfImport").onclick = () => {
           if (!pendingDxfImport) return;
           $("dxfImportSummaryModal").classList.add("hidden");
-          if (points.length || tramos.length)
-            $("dxfImportChoiceModal").classList.remove("hidden");
-          else
-            applyDxfImport("replace");
+          $("dxfImportChoiceModal").classList.remove("hidden");
         };
         function applyDxfImport(mode) {
           if (!pendingDxfImport) return;
@@ -3594,6 +3592,29 @@
         }
         $("addDxfImport").onclick = () => applyDxfImport("add");
         $("replaceDxfImport").onclick = () => applyDxfImport("replace");
+        function createProjectFromDxfImport() {
+          if (!pendingDxfImport) return;
+          persist();
+          const imported = pendingDxfImport.project,
+            baseName = imported.name.trim() || "Replanteo importado";
+          let name = baseName,
+            suffix = 2;
+          while (projects.some((project) => project.name === name))
+            name = `${baseName} (${suffix++})`;
+          projects.push({
+            name,
+            points: imported.points,
+            tramos: imported.tramos,
+          });
+          activeProjectIndex = projects.length - 1;
+          loadProject(activeProjectIndex);
+          persist();
+          selectActiveProject();
+          render();
+          closeDxfImportDialogs();
+          tell("Importación DXF completada.", false, "ptsMsg");
+        }
+        $("newDxfImport").onclick = createProjectFromDxfImport;
         function exportDxfFile() {
           const exportName = safeFileName($("projectName").value);
           let d =
@@ -3754,7 +3775,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 5.3</div>
+    <div class="version-app">V5.3.1-BETA</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
