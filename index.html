@@ -438,6 +438,16 @@
         background: #f8fafc;
       }
 
+      .active-project-indicator {
+        margin: 0 0 12px;
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: #e8f5ed;
+        color: #0f5132;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
       .project-box input {
         font-weight: 700;
       }
@@ -872,6 +882,89 @@
       </div>
     </div>
     <div
+      id="deletePointConfirmation"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deletePointConfirmationTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="deletePointConfirmationTitle">Confirmar eliminación</h2>
+        <p class="dxf-import-choice-message">
+          Se eliminará permanentemente el punto seleccionado.
+
+          Los tramos asociados a este punto también serán eliminados.
+
+          ¿Desea continuar?
+        </p>
+        <dl class="dxf-summary">
+          <div>
+            <dt>Nombre del punto</dt>
+            <dd id="deletePointName"></dd>
+          </div>
+          <div>
+            <dt>Tramos asociados</dt>
+            <dd id="deletePointRouteCount"></dd>
+          </div>
+        </dl>
+        <ul id="deletePointRoutes" class="dxf-import-choice-message"></ul>
+        <div class="project-actions">
+          <button type="button" id="confirmDeletePoint" class="danger">
+            Eliminar
+          </button>
+          <button type="button" id="cancelDeletePoint" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="nearPointWarning"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="nearPointWarningTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="nearPointWarningTitle">Coordenadas cercanas</h2>
+        <p id="nearPointWarningMessage" class="dxf-import-choice-message"></p>
+        <div class="project-actions">
+          <button type="button" id="continueNearPoint" class="primary">
+            Continuar
+          </button>
+          <button type="button" id="cancelNearPoint" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="networkValidation"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="networkValidationTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="networkValidationTitle">Validación previa</h2>
+        <p class="dxf-import-choice-message">
+          Se detectaron posibles inconsistencias entre las redes registradas y
+          los tramos representados en la previsualización.
+
+          Revise la información antes de exportar.
+        </p>
+        <dl id="networkValidationSummary" class="dxf-summary"></dl>
+        <div class="project-actions">
+          <button type="button" id="continueNetworkExport" class="primary">
+            Continuar
+          </button>
+          <button type="button" id="cancelNetworkExport" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
       id="dxfImportSummaryModal"
       class="project-overlay dxf-confirmation hidden"
       role="dialog"
@@ -934,6 +1027,13 @@
             Total de registros: <span id="countInicio">0</span>
           </div>
           <h2>Registrar punto</h2>
+          <div
+            id="activeProjectIndicator"
+            class="active-project-indicator"
+            aria-live="polite"
+          >
+            Proyecto activo: Sin nombre
+          </div>
           <form id="form" novalidate>
             <div class="grid">
               <div class="num">
@@ -1156,6 +1256,8 @@
           tramos = [],
           projectName = "",
           pendingDxfImport = null,
+          pendingPointSave = null,
+          pendingPointDelete = -1,
           projects = [],
           activeProjectIndex = 0,
           pendingProjectNameAction = "",
@@ -1415,6 +1517,8 @@
           tramos = current.tramos || [];
           projectName = String(current.name || "");
           $("projectName").value = projectName;
+          $("activeProjectIndicator").textContent =
+            `Proyecto activo: ${projectName || "Sin nombre"}`;
         }
         function load() {
           const stableProjects = localStorage.getItem(projectsKey);
@@ -1446,6 +1550,8 @@
             points,
             tramos,
           };
+          $("activeProjectIndicator").textContent =
+            `Proyecto activo: ${projectName || "Sin nombre"}`;
           localStorage.setItem(projectsKey, JSON.stringify(projects));
           localStorage.setItem(
             activeProjectKey,
@@ -2483,13 +2589,51 @@
             event.target.classList.remove("field-invalid");
         });
 
+        function savePointRecord(point) {
+          if (edit < 0) points.push(point);
+          else points[edit] = point;
+          persist();
+          render();
+          clear();
+          openView("pts");
+        }
+        function showNearPointWarning(point, nearest) {
+          pendingPointSave = point;
+          $("nearPointWarningMessage").textContent =
+            `Existe un punto a ${nearest.distance.toFixed(1)} metros de distancia.\n\nPunto encontrado: ${nearest.point.number}\n\n¿Desea continuar?`;
+          $("nearPointWarning").classList.remove("hidden");
+        }
+        $("continueNearPoint").onclick = () => {
+          const point = pendingPointSave;
+          pendingPointSave = null;
+          $("nearPointWarning").classList.add("hidden");
+          if (point) savePointRecord(point);
+        };
+        $("cancelNearPoint").onclick = () => {
+          pendingPointSave = null;
+          $("nearPointWarning").classList.add("hidden");
+        };
         $("form").onsubmit = (e) => {
           e.preventDefault();
           const number = $("numero").value.trim(),
-            c1 = +$("c1").value,
-            c2 = +$("c2").value;
-          if (!number || !Number.isFinite(c1) || !Number.isFinite(c2))
-            return tell("Complete numeración y coordenadas.", true);
+            c1Value = $("c1").value.trim(),
+            c2Value = $("c2").value.trim(),
+            c1 = Number(c1Value),
+            c2 = Number(c2Value),
+            pointCoordinates = { mode, c1, c2 };
+          if (
+            !c1Value ||
+            !c2Value ||
+            !Number.isFinite(c1) ||
+            !Number.isFinite(c2) ||
+            !latlng(pointCoordinates)
+          )
+            return tell(
+              "Debe registrar coordenadas válidas antes de guardar el punto.",
+              true,
+            );
+          if (!number)
+            return tell("Complete la numeración del punto.", true);
           if (
             points.some(
               (point, index) => point.number === number && index !== edit,
@@ -2578,12 +2722,22 @@
             gpsTime: lastGpsTime,
             elements: els,
           };
-          if (edit < 0) points.push(p);
-          else points[edit] = p;
-          persist();
-          render();
-          clear();
-          openView("pts");
+          const [x, y] = xy(p);
+          const nearest = points.reduce(
+            (closest, existing, index) => {
+              if (index === edit || !latlng(existing)) return closest;
+              const [existingX, existingY] = xy(existing),
+                distance = Math.hypot(x - existingX, y - existingY);
+              return Number.isFinite(distance) &&
+                distance < 7 &&
+                (!closest || distance < closest.distance)
+                ? { point: existing, distance }
+                : closest;
+            },
+            null,
+          );
+          if (nearest) return showNearPointWarning(p, nearest);
+          savePointRecord(p);
         };
         function detailsText(element) {
           const d = element.details || {};
@@ -2749,6 +2903,13 @@
             "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             { maxZoom: 19, attribution: "Tiles © Esri" },
           ).addTo(map);
+          map.on("popupopen", (event) => {
+            const button =
+              event.popup.getElement()?.querySelector(".edit-preview");
+            if (button)
+              button.onclick = () =>
+                editPointAt(Number(button.dataset.i));
+          });
           lines = L.layerGroup().addTo(map);
           markers = L.layerGroup().addTo(map);
         }
@@ -2818,7 +2979,7 @@
           if (!markers) return;
           markers.clearLayers();
           const bounds = [];
-          points.forEach((p) => {
+          points.forEach((p, index) => {
             const ll = latlng(p);
             if (!ll) return;
             L.circleMarker(ll, {
@@ -2839,7 +3000,7 @@
                 pane: "labelsPane",
               })
               .bindPopup(
-                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((e) => `${esc(elementSummary(e))}`).join("<br>")}`,
+                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((e) => `${esc(elementSummary(e))}`).join("<br>")}<br><button type="button" class="secondary edit-preview" data-i="${index}">Editar</button>`,
               );
             bounds.push(ll);
           });
@@ -3044,6 +3205,43 @@
             { enableHighAccuracy: true },
           );
         };
+        function editPointAt(index) {
+          const p = points[index];
+          if (!p) return;
+          edit = index;
+          $("cancelEdit").classList.remove("hidden");
+          $("numero").value = p.number;
+          setMode(p.mode);
+          $("c1").value = p.c1;
+          $("c2").value = p.c2;
+          lastGpsAccuracy = Number.isFinite(+p.accuracy) ? +p.accuracy : null;
+          lastGpsTime = p.gpsTime || null;
+          if (lastGpsAccuracy !== null) updateGpsQuality(lastGpsAccuracy);
+          $("elements").innerHTML = "";
+          p.elements.forEach((element, elementIndex) =>
+            row(
+              element.type,
+              element.text,
+              element.status,
+              elementIndex === 0,
+              element.details || {},
+            ),
+          );
+          openView("reg");
+          const location = latlng(p),
+            accuracy =
+              p.accuracy !== null &&
+              p.accuracy !== undefined &&
+              Number.isFinite(Number(p.accuracy))
+                ? Number(p.accuracy)
+                : null;
+          $("gpsPreview").classList.remove("active");
+          if (accuracy === null && accCircle) {
+            mini.removeLayer(accCircle);
+            accCircle = null;
+          }
+          if (location) miniShow(location[0], location[1], accuracy);
+        }
         function render() {
           $("count").textContent = String(points.length);
           $("countInicio").textContent = String(points.length);
@@ -3056,52 +3254,56 @@
                 .join("")
             : '<div class="helper">No hay puntos.</div>';
           document.querySelectorAll(".edit").forEach(
-            (b) =>
-              (b.onclick = () => {
-                const p = points[+b.dataset.i];
-                edit = +b.dataset.i;
-                $("cancelEdit").classList.remove("hidden");
-                $("numero").value = p.number;
-                setMode(p.mode);
-                $("c1").value = p.c1;
-                $("c2").value = p.c2;
-                lastGpsAccuracy = Number.isFinite(+p.accuracy)
-                  ? +p.accuracy
-                  : null;
-                lastGpsTime = p.gpsTime || null;
-                if (lastGpsAccuracy !== null) updateGpsQuality(lastGpsAccuracy);
-                $("elements").innerHTML = "";
-                p.elements.forEach((e, j) =>
-                  row(e.type, e.text, e.status, j === 0, e.details || {}),
-                );
-                openView("reg");
-                const location = latlng(p),
-                  accuracy =
-                    p.accuracy !== null &&
-                    p.accuracy !== undefined &&
-                    Number.isFinite(Number(p.accuracy))
-                      ? Number(p.accuracy)
-                      : null;
-                $("gpsPreview").classList.remove("active");
-                if (accuracy === null && accCircle) {
-                  mini.removeLayer(accCircle);
-                  accCircle = null;
-                }
-                if (location) miniShow(location[0], location[1], accuracy);
-              }),
+            (button) =>
+              (button.onclick = () => editPointAt(Number(button.dataset.i))),
           );
           document.querySelectorAll(".del").forEach(
-            (b) =>
-              (b.onclick = () => {
-                const n = points[+b.dataset.i].number;
-                points.splice(+b.dataset.i, 1);
-                tramos = tramos.filter((t) => t.start !== n && t.end !== n);
-                persist();
-                render();
+            (button) =>
+              (button.onclick = () => {
+                const index = Number(button.dataset.i),
+                  point = points[index];
+                if (!point) return;
+                pendingPointDelete = index;
+                const associatedTramos = tramos.filter(
+                  (tramo) =>
+                    tramo.start === point.number || tramo.end === point.number,
+                );
+                $("deletePointName").textContent = point.number;
+                $("deletePointRouteCount").textContent =
+                  String(associatedTramos.length);
+                $("deletePointRoutes").innerHTML = associatedTramos
+                  .map(
+                    (tramo) =>
+                      `<li>${esc(tramo.start)} → ${esc(tramo.end)}</li>`,
+                  )
+                  .join("");
+                $("deletePointRoutes").classList.toggle(
+                  "hidden",
+                  associatedTramos.length === 0,
+                );
+                $("deletePointConfirmation").classList.remove("hidden");
               }),
           );
           renderMap();
         }
+        $("confirmDeletePoint").onclick = () => {
+          const index = pendingPointDelete;
+          pendingPointDelete = -1;
+          $("deletePointConfirmation").classList.add("hidden");
+          const point = points[index];
+          if (!point) return;
+          const number = point.number;
+          points.splice(index, 1);
+          tramos = tramos.filter(
+            (tramo) => tramo.start !== number && tramo.end !== number,
+          );
+          persist();
+          render();
+        };
+        $("cancelDeletePoint").onclick = () => {
+          pendingPointDelete = -1;
+          $("deletePointConfirmation").classList.add("hidden");
+        };
         function download(c, n, t) {
           const a = document.createElement("a"),
             u = URL.createObjectURL(new Blob([c], { type: t }));
@@ -3110,6 +3312,45 @@
           a.click();
           setTimeout(() => URL.revokeObjectURL(u), 500);
         }
+        function validateNetworksBeforeExport() {
+          const registered = { "Red MT": 0, "Red BT": 0 },
+            represented = { "Red MT": 0, "Red BT": 0 };
+          points.forEach((point) =>
+            (point.elements || []).forEach((element) => {
+              if (element.type === "Red MT" || element.type === "Red BT")
+                registered[element.type] += 1;
+            }),
+          );
+          tramos.forEach((tramo) =>
+            (tramo.networks || []).forEach((network) => {
+              if (network.type === "Red MT" || network.type === "Red BT")
+                represented[network.type] += 1;
+            }),
+          );
+          const hasObservations = Object.keys(registered).some(
+            (type) => registered[type] !== represented[type],
+          );
+          if (!hasObservations) return false;
+          $("networkValidationSummary").innerHTML = [
+            ["Red MT registradas", registered["Red MT"]],
+            ["Tramos MT", represented["Red MT"]],
+            ["Red BT registradas", registered["Red BT"]],
+            ["Tramos BT", represented["Red BT"]],
+          ]
+            .map(
+              ([label, value]) =>
+                `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`,
+            )
+            .join("");
+          $("networkValidation").classList.remove("hidden");
+          return true;
+        }
+        $("continueNetworkExport").onclick = () => {
+          $("networkValidation").classList.add("hidden");
+          showDxfConfirmation();
+        };
+        $("cancelNetworkExport").onclick = () =>
+          $("networkValidation").classList.add("hidden");
         function showDxfConfirmation() {
           if (!validProjectName()) return;
           const elementCount = points.reduce(
@@ -3132,7 +3373,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V 5.2"],
+            ["Versión de la aplicación", "V 5.3"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3142,7 +3383,10 @@
             .join("");
           $("dxfConfirmation").classList.remove("hidden");
         }
-        $("dxf").onclick = showDxfConfirmation;
+        $("dxf").onclick = () => {
+          if (!validProjectName()) return;
+          if (!validateNetworksBeforeExport()) showDxfConfirmation();
+        };
         $("cancelDxfExport").onclick = () =>
           $("dxfConfirmation").classList.add("hidden");
         $("confirmDxfExport").onclick = () => {
@@ -3153,7 +3397,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V 5.2",
+            version: "V 5.3",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -3510,7 +3754,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V 5.2</div>
+    <div class="version-app">V 5.3</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
