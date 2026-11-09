@@ -1001,6 +1001,33 @@
       </div>
     </div>
     <div
+      id="deleteTransformerPairConfirmation"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deleteTransformerPairTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="deleteTransformerPairTitle">Eliminar cambio de transformador</h2>
+        <p class="dxf-import-choice-message">
+          Este transformador hace parte de un cambio o reposición y se encuentra
+          vinculado a otro transformador.
+
+          Si continúa, ambos registros serán eliminados.
+
+          ¿Desea continuar?
+        </p>
+        <div class="project-actions">
+          <button type="button" id="confirmDeleteTransformerPair" class="danger">
+            Eliminar ambos
+          </button>
+          <button type="button" id="cancelDeleteTransformerPair" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
       id="nearPointWarning"
       class="project-overlay dxf-confirmation hidden"
       role="dialog"
@@ -1015,6 +1042,29 @@
             Continuar
           </button>
           <button type="button" id="cancelNearPoint" class="secondary">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      id="transformerReasonModal"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transformerReasonTitle"
+    >
+      <div class="project-dialog">
+        <h2 id="transformerReasonTitle"></h2>
+        <label id="transformerReasonLabel" for="transformerReasonSelect"></label>
+        <select id="transformerReasonSelect">
+          <option value="">Seleccione...</option>
+        </select>
+        <div class="project-actions" style="margin-top: 14px">
+          <button type="button" id="confirmTransformerReason" class="primary">
+            Confirmar
+          </button>
+          <button type="button" id="cancelTransformerReason" class="secondary">
             Cancelar
           </button>
         </div>
@@ -1414,7 +1464,9 @@
           originalGpsLongitude = null,
           originalGpsLatitude = null,
           gpsManuallyAdjusted = false,
-          gpsAdjusting = false;
+          gpsAdjusting = false,
+          pendingTransformerAction = null,
+          pendingTransformerPairDelete = null;
         const APP_ACCESS_URL =
           "https://rriossan.github.io/GRAFICADOR-EN-CAMPO/";
         function openShareAppModal() {
@@ -1494,12 +1546,240 @@
         $("shareAppModal").addEventListener("click", (event) => {
           if (event.target === $("shareAppModal")) closeShareAppModal();
         });
+        function createTransformerPairId() {
+          return crypto.randomUUID
+            ? crypto.randomUUID()
+            : `trafo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+        function setTransformerCondition(rowElement, condition) {
+          const active = rowElement.querySelector(".sp-active-condition");
+          if (!active) return;
+          active.value = condition;
+          rowElement._confirmedTrafoCondition = condition;
+          rowElement
+            .querySelector(".trafo-state")
+            ?.classList.toggle("hidden", condition !== "Instalado");
+          paintElementRow(rowElement);
+        }
+        function cancelTransformerReason() {
+          if (pendingTransformerAction) {
+            setTransformerCondition(
+              pendingTransformerAction.rowElement,
+              pendingTransformerAction.previousCondition,
+            );
+          }
+          pendingTransformerAction = null;
+          $("transformerReasonModal").classList.add("hidden");
+        }
+        function cancelTransformerPairDelete() {
+          pendingTransformerPairDelete = null;
+          $("deleteTransformerPairConfirmation").classList.add("hidden");
+        }
+        function confirmTransformerPairDelete() {
+          const pairId = pendingTransformerPairDelete;
+          pendingTransformerPairDelete = null;
+          $("deleteTransformerPairConfirmation").classList.add("hidden");
+          if (!pairId) return;
+          const pairedRows = [
+            ...$("elements").querySelectorAll(".element-row"),
+          ].filter((elementRow) => elementRow._pairId === pairId);
+          if (pairedRows.length !== 2) {
+            tell(
+              "No se pudo identificar la pareja completa de transformadores.",
+              true,
+            );
+            return;
+          }
+          let point = null;
+          if (edit >= 0 && points[edit]) {
+            point = points[edit];
+            const storedPair = point.elements.filter(
+              (element) =>
+                element.type === "Transformador" &&
+                element.details?.pairId === pairId,
+            );
+            if (storedPair.length !== 2) {
+              tell(
+                "No se pudo actualizar la pareja guardada de transformadores.",
+                true,
+              );
+              return;
+            }
+          }
+          pairedRows.forEach((elementRow) => elementRow.remove());
+          if (point) {
+            point.elements = point.elements.filter(
+              (element) =>
+                !(
+                  element.type === "Transformador" &&
+                  element.details?.pairId === pairId
+                ),
+            );
+            persist();
+            render();
+          }
+        }
+        $("confirmDeleteTransformerPair").addEventListener(
+          "click",
+          confirmTransformerPairDelete,
+        );
+        $("cancelDeleteTransformerPair").addEventListener(
+          "click",
+          cancelTransformerPairDelete,
+        );
+        $("deleteTransformerPairConfirmation").addEventListener(
+          "click",
+          (event) => {
+            if (event.target === $("deleteTransformerPairConfirmation"))
+              cancelTransformerPairDelete();
+          },
+        );
+        function requestTransformerReason(rowElement, previousCondition) {
+          const active = rowElement.querySelector(".sp-active-condition"),
+            requestedCondition = active.value;
+          if (!requestedCondition) {
+            rowElement._confirmedTrafoCondition = requestedCondition;
+            rowElement
+              .querySelector(".trafo-state")
+              ?.classList.add("hidden");
+            return;
+          }
+          if (rowElement._pairId) {
+            setTransformerCondition(rowElement, previousCondition);
+            tell(
+              "No se puede cambiar la condición de un transformador vinculado a una pareja.",
+              true,
+            );
+            return;
+          }
+          if (
+            requestedCondition !== "Instalado" &&
+            requestedCondition !== "Retirado"
+          ) {
+            setTransformerCondition(rowElement, requestedCondition);
+            return;
+          }
+          rowElement
+            .querySelector(".trafo-state")
+            ?.classList.toggle("hidden", requestedCondition !== "Instalado");
+          paintElementRow(rowElement);
+          const isRetirement = requestedCondition === "Retirado",
+            reasons = isRetirement
+              ? [
+                  ["Cambio", "Cambio"],
+                  ["Retiro definitivo", "Retiro definitivo"],
+                ]
+              : [
+                  ["Reposición", "Reposición"],
+                  ["Activo nuevo", "Activo nuevo"],
+                ];
+          pendingTransformerAction = {
+            rowElement,
+            previousCondition,
+            requestedCondition,
+          };
+          $("transformerReasonTitle").textContent = isRetirement
+            ? "Motivo del retiro"
+            : "Motivo de instalación";
+          $("transformerReasonLabel").textContent = isRetirement
+            ? "Seleccione el motivo del retiro"
+            : "Seleccione el motivo de instalación";
+          $("transformerReasonSelect").innerHTML =
+            '<option value="">Seleccione...</option>' +
+            reasons
+              .map(
+                ([value, label]) =>
+                  `<option value="${esc(value)}">${esc(label)}</option>`,
+              )
+              .join("");
+          $("transformerReasonSelect").classList.remove("field-invalid");
+          $("transformerReasonModal").classList.remove("hidden");
+          $("transformerReasonSelect").focus();
+        }
+        function confirmTransformerReason() {
+          const action = pendingTransformerAction,
+            reason = $("transformerReasonSelect").value;
+          if (!action) return;
+          if (!reason) {
+            $("transformerReasonSelect").classList.add("field-invalid");
+            $("transformerReasonSelect").focus();
+            return;
+          }
+          pendingTransformerAction = null;
+          $("transformerReasonModal").classList.add("hidden");
+          const { rowElement, requestedCondition } = action;
+          setTransformerCondition(rowElement, requestedCondition);
+          const createsPair =
+            (requestedCondition === "Retirado" && reason === "Cambio") ||
+            (requestedCondition === "Instalado" && reason === "Reposición");
+          if (!createsPair) return;
+          if (rowElement._pairId) {
+            tell("Ya existe una pareja para este cambio de transformador.", true);
+            return;
+          }
+          const pairId = createTransformerPairId(),
+            pairedCondition =
+              requestedCondition === "Retirado" ? "Instalado" : "Retirado",
+            pairReason = reason;
+          rowElement._pairId = pairId;
+          rowElement._pairRole = "source";
+          rowElement._pairReason = pairReason;
+          rowElement._initialDetails = {
+            ...rowElement._initialDetails,
+            pairId,
+            pairRole: "source",
+            pairReason,
+          };
+          rowElement.querySelector(".tp").disabled = true;
+          row(
+            "Transformador",
+            "",
+            "",
+            false,
+            {
+              activeCondition: pairedCondition,
+              equipmentState: "",
+              ne: "",
+              serial: "",
+              pairId,
+              pairRole: "paired",
+              pairReason,
+              conditionLocked: true,
+            },
+          );
+          const elements = $("elements"),
+            pairedRow = elements.lastElementChild,
+            followingRow = rowElement.nextElementSibling;
+          elements.insertBefore(pairedRow, followingRow);
+        }
+        $("confirmTransformerReason").addEventListener(
+          "click",
+          confirmTransformerReason,
+        );
+        $("cancelTransformerReason").addEventListener(
+          "click",
+          cancelTransformerReason,
+        );
+        $("transformerReasonModal").addEventListener("click", (event) => {
+          if (event.target === $("transformerReasonModal"))
+            cancelTransformerReason();
+        });
         document.addEventListener("keydown", (event) => {
           if (
             event.key === "Escape" &&
             !$("shareAppModal").classList.contains("hidden")
           )
             closeShareAppModal();
+          if (
+            event.key === "Escape" &&
+            !$("transformerReasonModal").classList.contains("hidden")
+          )
+            cancelTransformerReason();
+          if (
+            event.key === "Escape" &&
+            !$("deleteTransformerPairConfirmation").classList.contains("hidden")
+          )
+            cancelTransformerPairDelete();
         });
         const supports = [
           "Poste",
@@ -2300,7 +2580,7 @@
                 activeCondition,
                 true,
               ) +
-              `<div class="trafo-state ${activeCondition === "Instalado" ? "" : "hidden"}">${selectField("sp-equipment-state", "Estado", ["Nuevo", "Reparado"], equipmentState)}</div>` +
+              `<div class="trafo-state ${activeCondition === "Instalado" ? "" : "hidden"}">${selectField("sp-equipment-state", "Condición del activo", ["Nuevo", "Reparado"], equipmentState)}</div>` +
               inputField("sp-ne", "N.E.", details.ne || "", true) +
               inputField("sp-serial", "Serial", details.serial || "", true)
             );
@@ -2458,13 +2738,16 @@
               );
             };
           const active = rowElement.querySelector(".sp-active-condition");
-          if (active)
+          if (active) {
+            rowElement._confirmedTrafoCondition = active.value;
+            active.disabled = Boolean(rowElement._conditionLocked);
             active.onchange = () => {
-              rowElement
-                .querySelector(".trafo-state")
-                .classList.toggle("hidden", active.value !== "Instalado");
-              paintElementRow(rowElement);
+              requestTransformerReason(
+                rowElement,
+                rowElement._confirmedTrafoCondition,
+              );
             };
+          }
           const state = rowElement.querySelector(".sp-equipment-state");
           if (state) state.onchange = () => paintElementRow(rowElement);
           const family = rowElement.querySelector(".sp-family");
@@ -2513,6 +2796,10 @@
           const selected = list.includes(type) ? type : "";
           rowElement.className = "element-row";
           rowElement._initialDetails = details || {};
+          rowElement._pairId = details.pairId || "";
+          rowElement._pairRole = details.pairRole || "";
+          rowElement._pairReason = details.pairReason || "";
+          rowElement._conditionLocked = Boolean(details.conditionLocked);
           const conditions = isFirst
             ? ["Existente", "Nuevo", "Reposicion"]
             : ["Nuevo", "Reposicion"];
@@ -2522,6 +2809,8 @@
                     <div class="general-condition">${selectField("st", "Condición", conditions, status, true)}</div>
                     <div class="description-field">${descriptionField(text)}</div>
                 </div><div class="element-actions">${isFirst ? '<button type="button" disabled>Obligatorio</button>' : '<button type="button" class="danger rm">Eliminar</button>'}</div>`;
+          if (rowElement._pairId)
+            rowElement.querySelector(".tp").disabled = true;
           const descriptionInput = rowElement.querySelector(".tx");
           const descriptionCounter = rowElement.querySelector(
             ".description-counter",
@@ -2533,7 +2822,16 @@
             paintElementRow(rowElement);
           rowElement
             .querySelector(".rm")
-            ?.addEventListener("click", () => rowElement.remove());
+            ?.addEventListener("click", () => {
+              if (rowElement._pairId) {
+                pendingTransformerPairDelete = rowElement._pairId;
+                $("deleteTransformerPairConfirmation").classList.remove(
+                  "hidden",
+                );
+                return;
+              }
+              rowElement.remove();
+            });
           $("elements").appendChild(rowElement);
           bindSpecificFields(rowElement, isFirst);
         }
@@ -2879,6 +3177,16 @@
                   : "",
               ne: value(".sp-ne").trim(),
               serial: value(".sp-serial").trim(),
+              ...(rowElement._pairId
+                ? {
+                    pairId: rowElement._pairId,
+                    pairRole: rowElement._pairRole,
+                    pairReason: rowElement._pairReason,
+                    ...(rowElement._conditionLocked
+                      ? { conditionLocked: true }
+                      : {}),
+                  }
+                : {}),
             };
           if (["DPS", "Cortacircuito", "Cuchilla"].includes(type))
             return {
@@ -2924,6 +3232,38 @@
             text: rowElement.querySelector(".tx").value.trim(),
             details,
           };
+        }
+        function hasValidTransformerPairs(elements) {
+          const pairs = new Map();
+          elements.forEach((element) => {
+            if (element.type !== "Transformador" || !element.details.pairId)
+              return;
+            const pair = pairs.get(element.details.pairId) || [];
+            pair.push(element);
+            pairs.set(element.details.pairId, pair);
+          });
+          return [...pairs.values()].every((pair) => {
+            if (pair.length !== 2) return false;
+            const source = pair.find(
+                (element) => element.details.pairRole === "source",
+              ),
+              linked = pair.find(
+                (element) => element.details.pairRole === "paired",
+              );
+            if (
+              !source ||
+              !linked ||
+              source.details.pairReason !== linked.details.pairReason ||
+              linked.details.conditionLocked !== true
+            )
+              return false;
+            return source.details.pairReason === "Cambio"
+              ? source.details.activeCondition === "Retirado" &&
+                  linked.details.activeCondition === "Instalado"
+              : source.details.pairReason === "Reposición" &&
+                  source.details.activeCondition === "Instalado" &&
+                  linked.details.activeCondition === "Retirado";
+          });
         }
         $("form").addEventListener("change", (event) => {
           if (event.target.matches("select") && event.target.value)
@@ -3034,6 +3374,11 @@
           const els = elementRows.map(readElementRow);
           if (els.some((element) => !element.type))
             return tell("Seleccione el elemento en todas las filas.", true);
+          if (!hasValidTransformerPairs(els))
+            return tell(
+              "La pareja de transformadores está incompleta o tiene condiciones incompatibles.",
+              true,
+            );
           if (
             els.some(
               (element) => element.type === "Poste" && !element.details.poste,
@@ -3711,7 +4056,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V5.3.3-BETA"],
+            ["Versión de la aplicación", "V5.3.4-BETA"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3735,7 +4080,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V5.3.3-BETA",
+            version: "V5.3.4-BETA",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -4112,7 +4457,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V5.3.3-BETA</div>
+    <div class="version-app">V5.3.4-BETA</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
