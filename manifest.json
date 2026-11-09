@@ -1,6 +1,6 @@
 {
-  "name": "APP de Replanteo",
-  "short_name": "Replanteo",
+  "name": "APP de Levantamiento",
+  "short_name": "Levantamiento",
   "description": "Registro offline de puntos y coordenadas GPS",
   "start_url": "./index.html",
   "scope": "./",

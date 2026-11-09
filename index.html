@@ -6,11 +6,11 @@
     <meta name="theme-color" content="#0f5132" />
     <meta
       name="description"
-      content="Registro offline de puntos de replanteo y coordenadas GPS"
+      content="Registro offline de puntos del Levantamiento y coordenadas GPS"
     />
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <title>APP Replanteo</title>
+    <title>APP Levantamiento</title>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -45,9 +45,25 @@
         z-index: 8;
       }
 
+      .header-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
       header h1 {
         font-size: 20px;
         margin: 0;
+      }
+
+      .share-app-button {
+        flex: 0 0 auto;
+        padding: 6px 9px;
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 13px;
       }
 
       header p {
@@ -612,6 +628,16 @@
       .element-fields .description-field {
         min-width: 220px;
       }
+      .description-field > label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .description-counter {
+        color: #5c6670;
+        font-size: 11px;
+        font-weight: 400;
+      }
       .element-actions {
         display: flex;
         justify-content: flex-end;
@@ -757,6 +783,40 @@
         font-size: 20px;
       }
 
+      .share-dialog {
+        width: min(100%, 420px);
+        text-align: center;
+      }
+
+      .share-qr {
+        display: flex;
+        justify-content: center;
+        margin: 0 auto 12px;
+        padding: 10px;
+      }
+
+      .share-qr canvas,
+      .share-qr img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+
+      .share-app-url {
+        margin: 0 0 14px;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+
+      .share-status {
+        min-height: 18px;
+        margin: 0 0 10px;
+        color: #0f5132;
+        font-size: 13px;
+      }
+
       .project-info {
         min-height: 58px;
         margin: 10px 0 16px;
@@ -848,12 +908,12 @@
       aria-labelledby="projectModalTitle"
     >
       <div class="project-dialog">
-        <h2 id="projectModalTitle">Seleccione el replanteo</h2>
-        <label for="savedProjects">Replanteos guardados</label>
+        <h2 id="projectModalTitle">Seleccione el Levantamiento</h2>
+        <label for="savedProjects">Levantamientos guardados</label>
         <select id="savedProjects"></select>
         <div id="projectInfo" class="project-info" aria-live="polite"></div>
         <div id="projectNameEditor" class="project-name-editor hidden">
-          <label for="projectNameInput">Nombre del replanteo</label>
+          <label for="projectNameInput">Nombre del Levantamiento</label>
           <input id="projectNameInput" type="text" maxlength="80" />
           <div class="actions" style="margin-top: 8px">
             <button type="button" id="saveProjectName" class="primary">
@@ -869,16 +929,16 @@
             Abrir seleccionado
           </button>
           <button type="button" id="newProject" class="blue">
-            + Nuevo replanteo
+            + Nuevo levantamiento
           </button>
           <button type="button" id="renameProject" class="secondary">
-            Renombrar
+            Renombrar levantamiento
           </button>
           <button type="button" id="duplicateProject" class="secondary">
-            Duplicar
+            Duplicar levantamiento
           </button>
           <button type="button" id="deleteProject" class="danger">
-            Eliminar
+            Eliminar levantamiento
           </button>
         </div>
       </div>
@@ -1023,7 +1083,7 @@
             Agregar al proyecto actual
           </button>
           <button type="button" id="newDxfImport" class="blue">
-            Crear nuevo replanteo
+            Crear nuevo levantamiento
           </button>
           <button type="button" id="replaceDxfImport" class="danger">
             Reemplazar proyecto actual
@@ -1034,8 +1094,40 @@
         </div>
       </div>
     </div>
+    <div
+      id="shareAppModal"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shareAppTitle"
+    >
+      <div class="project-dialog share-dialog">
+        <h2 id="shareAppTitle">Acceso a la aplicación</h2>
+        <div id="shareQr" class="share-qr" aria-label="Código QR de acceso"></div>
+        <p id="shareAppUrl" class="share-app-url hidden"></p>
+        <p
+          id="shareAppStatus"
+          class="share-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <div class="project-actions">
+          <button type="button" id="copyAppLink" class="primary">
+            Copiar enlace
+          </button>
+          <button type="button" id="closeShareApp" class="secondary">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
     <header>
-      <h1>APP de replanteo</h1>
+      <div class="header-main">
+        <h1>APP de Levantamiento</h1>
+        <button type="button" id="shareApp" class="share-app-button">
+          📱 QR
+        </button>
+      </div>
       <p>Registro de apoyos, redes y exportación DXF</p>
     </header>
     <nav class="menu">
@@ -1198,24 +1290,24 @@
         <div class="card">
           <h2>Puntos registrados</h2>
           <div class="project-box">
-            <label for="projectSelect">Replanteos guardados</label>
+            <label for="projectSelect">Levantamientos guardados</label>
             <select id="projectSelect"></select>
             <div class="actions">
               <button type="button" id="newProjectInline" class="primary">
-                + Nuevo
+                + Nuevo levantamiento
               </button>
               <button type="button" id="renameProjectInline" class="secondary">
-                Renombrar
+                Renombrar levantamiento
               </button>
               <button type="button" id="duplicateProjectInline" class="secondary">
-                Duplicar
+                Duplicar levantamiento
               </button>
               <button type="button" id="deleteProjectInline" class="danger">
-                Eliminar
+                Eliminar levantamiento
               </button>
             </div>
             <div id="projectNameEditorInline" class="hidden">
-              <label for="projectNameInputInline">Nombre del replanteo</label>
+              <label for="projectNameInputInline">Nombre del Levantamiento</label>
               <input
                 id="projectNameInputInline"
                 type="text"
@@ -1249,7 +1341,7 @@
               id="projectName"
               type="text"
               maxlength="80"
-              placeholder="Ej.: REPLANTEO_CIRCUITO_CUCUTA"
+              placeholder="Ej.: LEVANTAMIENTO_CIRCUITO_CUCUTA"
               required
             />
             <div class="helper">
@@ -1285,6 +1377,7 @@
     </main>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
       (() => {
         "use strict";
@@ -1322,6 +1415,92 @@
           originalGpsLatitude = null,
           gpsManuallyAdjusted = false,
           gpsAdjusting = false;
+        const APP_ACCESS_URL =
+          "https://rriossan.github.io/GRAFICADOR-EN-CAMPO/";
+        function openShareAppModal() {
+          const qrContainer = $("shareQr"),
+            status = $("shareAppStatus");
+          $("shareAppUrl").textContent = APP_ACCESS_URL;
+          status.textContent = "";
+          qrContainer.replaceChildren();
+          if (!window.QRCode) {
+            status.textContent =
+              "No se pudo cargar el generador QR. Verifique la conexión e inténtelo de nuevo.";
+          } else {
+            try {
+              new window.QRCode(qrContainer, {
+                text: APP_ACCESS_URL,
+                width: 300,
+                height: 300,
+                colorDark: "#0f172a",
+                colorLight: "#ffffff",
+                correctLevel: window.QRCode.CorrectLevel.H,
+              });
+            } catch (error) {
+              console.error("No se pudo generar el código QR.", error);
+              status.textContent = "No se pudo generar el código QR.";
+            }
+          }
+          $("shareAppModal").classList.remove("hidden");
+        }
+        function closeShareAppModal() {
+          $("shareAppModal").classList.add("hidden");
+        }
+        function copyTextWithFallback(text) {
+          const input = document.createElement("textarea");
+          input.value = text;
+          input.setAttribute("readonly", "");
+          input.style.position = "fixed";
+          input.style.opacity = "0";
+          document.body.appendChild(input);
+          try {
+            input.select();
+            return document.execCommand("copy");
+          } finally {
+            input.remove();
+          }
+        }
+        async function copyAppUrl() {
+          const status = $("shareAppStatus");
+          let clipboardError = null;
+          try {
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(APP_ACCESS_URL);
+              status.textContent = "Enlace copiado.";
+              return;
+            }
+          } catch (error) {
+            clipboardError = error;
+          }
+          try {
+            if (copyTextWithFallback(APP_ACCESS_URL)) {
+              status.textContent = "Enlace copiado.";
+              return;
+            }
+          } catch (error) {
+            console.error("No se pudo copiar el enlace de la aplicación.", error);
+          }
+          if (clipboardError)
+            console.error(
+              "No se pudo copiar el enlace con el portapapeles.",
+              clipboardError,
+            );
+          status.textContent =
+            "No se pudo copiar. Seleccione y copie la URL manualmente.";
+        }
+        $("shareApp").addEventListener("click", openShareAppModal);
+        $("copyAppLink").addEventListener("click", copyAppUrl);
+        $("closeShareApp").addEventListener("click", closeShareAppModal);
+        $("shareAppModal").addEventListener("click", (event) => {
+          if (event.target === $("shareAppModal")) closeShareAppModal();
+        });
+        document.addEventListener("keydown", (event) => {
+          if (
+            event.key === "Escape" &&
+            !$("shareAppModal").classList.contains("hidden")
+          )
+            closeShareAppModal();
+        });
         const supports = [
           "Poste",
           "Caja subterránea",
@@ -1401,7 +1580,10 @@
           try {
             value = JSON.parse(raw);
           } catch (error) {
-            console.error("No se pudieron leer los replanteos guardados.", error);
+            console.error(
+              "No se pudieron leer los Levantamientos guardados.",
+              error,
+            );
             return null;
           }
           const records = Array.isArray(value)
@@ -1634,7 +1816,7 @@
             project = projects[index];
           $("projectInfo").textContent = project
             ? `${project.name || "Sin nombre"} · ${project.points.length} puntos · ${project.tramos.length} tramos`
-            : "Seleccione un replanteo guardado.";
+            : "Seleccione un Levantamiento guardado.";
         }
         function closeProjectModal() {
           $("projectNameEditor").classList.add("hidden");
@@ -1662,7 +1844,7 @@
             index = selectedProjectIndex();
           if (!name) {
             $("projectInfo").textContent =
-              "Ingrese un nombre para el replanteo.";
+              "Ingrese un nombre para el Levantamiento.";
             $("projectNameInput").focus();
             return;
           }
@@ -1714,7 +1896,7 @@
         function deleteSelectedProject(selectorId = "savedProjects") {
           const index = selectedProjectIndex(selectorId);
           if (index < 0 || !projects[index]) return;
-          if (!confirm("¿Eliminar el replanteo seleccionado?")) return;
+          if (!confirm("¿Eliminar el Levantamiento seleccionado?")) return;
           persist();
           const wasActive = index === activeProjectIndex;
           projects.splice(index, 1);
@@ -1919,7 +2101,7 @@
           setMode(e.target.value);
           previewManual();
         };
-        const POST_HEIGHTS = [8, 10, 11, 12, 14, 16];
+        const POST_HEIGHTS = [8, 10, 12, 14, 16];
         const POST_LOADS = {
           Concreto: [510, 750, 1050, 1350, 1500, 2000, 3000],
           Fibra: [510, 750, 1050, 1350],
@@ -2072,10 +2254,24 @@
             required,
           );
         }
+        function descriptionField(value = "") {
+          const maxLength = 50;
+          return field(
+            `Descripción <span class="description-counter">${String(value).length} / ${maxLength}</span>`,
+            `<input class="tx" maxlength="${maxLength}" value="${esc(value)}">`,
+          );
+        }
 
-        function specificFields(type, details = {}) {
+        function specificFields(type, details = {}, isFirst = true) {
           if (type === "Poste") {
             const material = details.material || "";
+            const legacyPost =
+              details.poste &&
+              POST_LOADS[material]?.some(
+                (load) => details.poste === `11×${load}`,
+              )
+                ? `<option value="${esc(details.poste)}" selected disabled>${esc(details.poste)}</option>`
+                : "";
             return (
               selectField(
                 "sp-material",
@@ -2086,7 +2282,7 @@
               ) +
               field(
                 "Poste típico",
-                `<select class="sp-poste" required>${selectOptionsWithBlank(postTypes(material), details.poste, "Seleccione poste...")}</select>`,
+                `<select class="sp-poste" required>${selectOptionsWithBlank(postTypes(material), details.poste, "Seleccione poste...")}${legacyPost}</select>`,
                 true,
               )
             );
@@ -2098,7 +2294,9 @@
               selectField(
                 "sp-active-condition",
                 "Condición",
-                ["Instalado", "Retirado", "Existente"],
+                isFirst
+                  ? ["Instalado", "Retirado", "Existente"]
+                  : ["Instalado", "Retirado"],
                 activeCondition,
                 true,
               ) +
@@ -2208,13 +2406,15 @@
           return "Existente";
         }
 
-        function bindSpecificFields(rowElement) {
+        function bindSpecificFields(rowElement, isFirst) {
           const typeSelect = rowElement.querySelector(".tp");
           const detailsBox = rowElement.querySelector(".specific-fields");
           const conditionBox = rowElement.querySelector(".general-condition");
           function rebuild(details = {}) {
             const type = typeSelect.value;
-            detailsBox.innerHTML = type ? specificFields(type, details) : "";
+            detailsBox.innerHTML = type
+              ? specificFields(type, details, isFirst)
+              : "";
             conditionBox.classList.toggle(
               "hidden",
               !type || !usesGeneralCondition(type),
@@ -2313,19 +2513,29 @@
           const selected = list.includes(type) ? type : "";
           rowElement.className = "element-row";
           rowElement._initialDetails = details || {};
+          const conditions = isFirst
+            ? ["Existente", "Nuevo", "Reposicion"]
+            : ["Nuevo", "Reposicion"];
           rowElement.innerHTML = `<div class="element-fields">
                     ${field(isFirst ? "Apoyo obligatorio" : "Elemento", `<select class="tp">${selectOptionsWithBlank(list, selected, isFirst ? "Seleccione apoyo..." : "Seleccione elemento...")}</select>`, true)}
                     <div class="specific-fields"></div>
-                    <div class="general-condition">${selectField("st", "Condición", ["Existente", "Nuevo", "Reposicion"], status, true)}</div>
-                    <div class="description-field">${inputField("tx", "Descripción", text)}</div>
+                    <div class="general-condition">${selectField("st", "Condición", conditions, status, true)}</div>
+                    <div class="description-field">${descriptionField(text)}</div>
                 </div><div class="element-actions">${isFirst ? '<button type="button" disabled>Obligatorio</button>' : '<button type="button" class="danger rm">Eliminar</button>'}</div>`;
+          const descriptionInput = rowElement.querySelector(".tx");
+          const descriptionCounter = rowElement.querySelector(
+            ".description-counter",
+          );
+          descriptionInput.addEventListener("input", () => {
+            descriptionCounter.textContent = `${descriptionInput.value.length} / 50`;
+          });
           rowElement.querySelector(".st").onchange = () =>
             paintElementRow(rowElement);
           rowElement
             .querySelector(".rm")
             ?.addEventListener("click", () => rowElement.remove());
           $("elements").appendChild(rowElement);
-          bindSpecificFields(rowElement);
+          bindSpecificFields(rowElement, isFirst);
         }
         function addElementRow() {
           row();
@@ -2771,7 +2981,7 @@
             )
           )
             return tell(
-              "Ya existe un punto con ese nombre dentro del replanteo. Utilice un nombre diferente.",
+              "Ya existe un punto con ese nombre dentro del Levantamiento. Utilice un nombre diferente.",
               true,
             );
           const elementRows = [...document.querySelectorAll(".element-row")];
@@ -3489,7 +3699,7 @@
           );
           const coordinateCount = points.filter((point) => latlng(point)).length;
           const summary = [
-            ["Nombre del replanteo", projectName],
+            ["Nombre del Levantamiento", projectName],
             ["Puntos registrados", points.length],
             ["Tramos registrados", tramos.length],
             ["Total de elementos registrados", elementCount],
@@ -3501,7 +3711,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V5.3.2-BETA"],
+            ["Versión de la aplicación", "V5.3.3-BETA"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3525,7 +3735,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V5.3.2-BETA",
+            version: "V5.3.3-BETA",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -3627,7 +3837,7 @@
         function showDxfImportSummary(file, metadata) {
           const summary = [
             ["Nombre del archivo", file.name],
-            ["Nombre del replanteo", metadata.project.name],
+            ["Nombre del Levantamiento", metadata.project.name],
             ["Fecha de exportación", formatImportDate(metadata.exportedAt)],
             ["Versión de origen", metadata.version],
             ["Cantidad de puntos", metadata.project.points.length],
@@ -3723,7 +3933,7 @@
           if (!pendingDxfImport) return;
           persist();
           const imported = pendingDxfImport.project,
-            baseName = imported.name.trim() || "Replanteo importado";
+            baseName = imported.name.trim() || "Levantamiento importado";
           let name = baseName,
             suffix = 2;
           while (projects.some((project) => project.name === name))
@@ -3902,7 +4112,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V5.3.2-BETA</div>
+    <div class="version-app">V5.3.3-BETA</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
