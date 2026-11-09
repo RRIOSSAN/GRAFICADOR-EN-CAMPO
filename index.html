@@ -1425,6 +1425,7 @@
         </div>
       </section>
     </main>
+    <div id="connectionBadge" class="connection-badge">En línea</div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2098,6 +2099,16 @@
             ? `${project.name || "Sin nombre"} · ${project.points.length} puntos · ${project.tramos.length} tramos`
             : "Seleccione un Levantamiento guardado.";
         }
+        function renameProject(index, name) {
+          if (!projects[index]) return false;
+          projects[index].name = name;
+          if (index === activeProjectIndex) {
+            projectName = name;
+            $("projectName").value = name;
+          }
+          persist();
+          return true;
+        }
         function closeProjectModal() {
           $("projectNameEditor").classList.add("hidden");
           $("projectModal").classList.add("hidden");
@@ -2140,13 +2151,7 @@
             return;
           }
           if (index < 0 || !projects[index]) return;
-          persist();
-          projects[index].name = name;
-          if (index === activeProjectIndex) {
-            projectName = name;
-            $("projectName").value = name;
-          }
-          persist();
+          if (!renameProject(index, name)) return;
           renderProjectSelector();
           $("savedProjects").value = String(index);
           $("projectNameEditor").classList.add("hidden");
@@ -2155,23 +2160,48 @@
         function duplicateSelectedProject(
           selectorId = "savedProjects",
           closeModal = true,
+          keepActive = false,
         ) {
           const index = selectedProjectIndex(selectorId);
-          if (index < 0) return;
+          if (index < 0) return false;
           persist();
           const source = projects[index],
             copy = JSON.parse(JSON.stringify(source));
+          const originalName = source.name || "Sin nombre",
+            nameMatch = originalName.match(/^(.*) \((\d+)\)$/),
+            baseName = nameMatch ? nameMatch[1] : originalName;
+          let suffix = nameMatch ? Math.max(2, Number(nameMatch[2]) + 1) : 2;
+          while (
+            projects.some((project) => project.name === `${baseName} (${suffix})`)
+          )
+            suffix++;
+          copy.name = `${baseName} (${suffix})`;
           projects.push({
             name: copy.name,
             points: copy.points,
             tramos: copy.tramos,
           });
+          if (keepActive) {
+            activeProjectIndex = projects.length - 1;
+            loadProject(activeProjectIndex);
+            persist();
+            selectActiveProject();
+            render();
+            updateProjectInfo();
+            tell(
+              `Levantamiento duplicado correctamente. Original: ${originalName}. Copia creada: ${copy.name}.`,
+              false,
+              "ptsMsg",
+            );
+            return true;
+          }
           activeProjectIndex = projects.length - 1;
           loadProject(activeProjectIndex);
           persist();
           selectActiveProject();
           render();
           if (closeModal) closeProjectModal();
+          return true;
         }
         function deleteSelectedProject(selectorId = "savedProjects") {
           const index = selectedProjectIndex(selectorId);
@@ -2215,9 +2245,11 @@
         });
         $("duplicateProject").addEventListener(
           "click",
-          duplicateSelectedProject,
+          () => duplicateSelectedProject(),
         );
-        $("deleteProject").addEventListener("click", deleteSelectedProject);
+        $("deleteProject").addEventListener("click", () =>
+          deleteSelectedProject("savedProjects"),
+        );
         function showInlineProjectNameEditor(action) {
           pendingInlineProjectAction = action;
           pendingInlineProjectIndex =
@@ -2246,13 +2278,7 @@
           } else {
             const index = pendingInlineProjectIndex;
             if (index < 0 || !projects[index]) return;
-            persist();
-            projects[index].name = name;
-            if (index === activeProjectIndex) {
-              projectName = name;
-              $("projectName").value = name;
-            }
-            persist();
+            if (!renameProject(index, name)) return;
             $("projectSelect").value = String(index);
             $("savedProjects").value = String(activeProjectIndex);
           }
@@ -2299,7 +2325,7 @@
           }
         });
         $("duplicateProjectInline").addEventListener("click", () =>
-          duplicateSelectedProject("projectSelect", false),
+          duplicateSelectedProject("projectSelect", false, true),
         );
         $("deleteProjectInline").addEventListener("click", () =>
           deleteSelectedProject("projectSelect"),
@@ -4056,7 +4082,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V5.3.4-BETA"],
+            ["Versión de la aplicación", "V5.3.5-BETA"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -4080,7 +4106,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V5.3.4-BETA",
+            version: "V5.3.5-BETA",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -4457,8 +4483,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V5.3.4-BETA</div>
-    <div id="connectionBadge" class="connection-badge">En línea</div>
+    <div class="version-app">V5.3.5-BETA</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
