@@ -261,6 +261,28 @@
         border-radius: 9px;
       }
 
+      .map-type-control {
+        padding: 6px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 1px 5px #0003;
+      }
+
+      .map-type-control label {
+        margin: 0 0 3px;
+        color: #1f2937;
+        font-size: 11px;
+      }
+
+      .map-type-control select {
+        width: auto;
+        min-width: 116px;
+        padding: 5px 25px 5px 7px;
+        border-radius: 5px;
+        font-size: 13px;
+      }
+
       .point {
         border: 1px solid var(--bd);
         border-left: 6px solid #777;
@@ -426,7 +448,7 @@
       }
 
       .leaflet-pane.leaflet-labels-pane {
-        z-index: 700;
+        z-index: 650;
         pointer-events: none;
       }
 
@@ -1136,7 +1158,7 @@
       </section>
       <section id="prev" class="view">
         <div class="card">
-          <h2>Vista previa satelital</h2>
+          <h2>Vista previa del mapa</h2>
           <div class="toolbar">
             <button id="all" class="secondary">Ver todos los puntos</button
             ><button id="loc" class="primary">Centrar en mi ubicación</button>
@@ -1288,6 +1310,8 @@
           markers,
           lines,
           mini,
+          mapLayers = [],
+          mapType = "satellite",
           miniMarker,
           accCircle,
           userMarker,
@@ -2321,16 +2345,89 @@
           });
         }
 
+        function setMapType(type) {
+          if (!["satellite", "hybrid", "map"].includes(type)) return;
+          mapType = type;
+          mapLayers.forEach(({ mapInstance, layers, select }) => {
+            Object.values(layers)
+              .flat()
+              .forEach((layer) => {
+                if (mapInstance.hasLayer(layer)) mapInstance.removeLayer(layer);
+              });
+            layers[type].forEach((layer) => layer.addTo(mapInstance));
+            select.value = type;
+          });
+        }
+
+        function addMapTypeControl(mapInstance) {
+          const satelliteLayer = L.tileLayer(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            { maxZoom: 19, attribution: "Imagery © Esri" },
+          );
+          const streetLayer = L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+              maxZoom: 19,
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            },
+          );
+          const transportationLabelsLayer = L.tileLayer(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+            { maxZoom: 19, attribution: "Transportation labels © Esri" },
+          );
+          const placeLabelsLayer = L.tileLayer(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+            { maxZoom: 19, attribution: "Place labels © Esri" },
+          );
+          const layers = {
+            satellite: [satelliteLayer],
+            hybrid: [
+              satelliteLayer,
+              transportationLabelsLayer,
+              placeLabelsLayer,
+            ],
+            map: [streetLayer],
+          };
+          const mapTypeControl = L.control({ position: "topright" });
+          mapTypeControl.onAdd = () => {
+            const container = L.DomUtil.create(
+              "div",
+              "leaflet-bar map-type-control",
+            );
+            const label = L.DomUtil.create("label", "", container);
+            const select = L.DomUtil.create("select", "", container);
+            select.id = `mapTypeSelect${mapLayers.length}`;
+            label.htmlFor = select.id;
+            label.textContent = "Tipo de mapa";
+            [
+              ["satellite", "Satelital"],
+              ["hybrid", "Híbrido"],
+              ["map", "Mapa"],
+            ].forEach(([value, text]) => {
+              const option = L.DomUtil.create("option", "", select);
+              option.value = value;
+              option.textContent = text;
+            });
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+            L.DomEvent.on(select, "change", () => setMapType(select.value));
+            return container;
+          };
+          mapTypeControl.addTo(mapInstance);
+          const select = mapInstance
+            .getContainer()
+            .querySelector(".map-type-control select");
+          mapLayers.push({ mapInstance, layers, select });
+          setMapType(mapType);
+        }
+
         function initMini() {
           if (mini) return;
-          mini = L.map("gpsMiniMap", { attributionControl: false }).setView(
+          mini = L.map("gpsMiniMap").setView(
             [7.89, -72.5],
             18,
           );
-          L.tileLayer(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            { maxZoom: 19 },
-          ).addTo(mini);
+          addMapTypeControl(mini);
         }
 
         function updateCoordinateFields(lat, lon) {
@@ -2933,10 +3030,7 @@
           map.getPane("pointsPane").classList.add("leaflet-points-pane");
           map.createPane("labelsPane");
           map.getPane("labelsPane").classList.add("leaflet-labels-pane");
-          L.tileLayer(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            { maxZoom: 19, attribution: "Tiles © Esri" },
-          ).addTo(map);
+          addMapTypeControl(map);
           map.on("popupopen", (event) => {
             const button =
               event.popup.getElement()?.querySelector(".edit-preview");
@@ -3407,7 +3501,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V5.3.1-BETA"],
+            ["Versión de la aplicación", "V5.3.2-BETA"],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -3431,7 +3525,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V5.3.1-BETA",
+            version: "V5.3.2-BETA",
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -3808,7 +3902,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V5.3.1-BETA</div>
+    <div class="version-app">V5.3.2-BETA</div>
     <div id="connectionBadge" class="connection-badge">En línea</div>
     <script>
       if ("serviceWorker" in navigator) {
