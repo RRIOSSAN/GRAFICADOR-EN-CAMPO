@@ -1552,6 +1552,11 @@
             ? crypto.randomUUID()
             : `trafo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         }
+        function createNetworkId() {
+          return crypto.randomUUID
+            ? crypto.randomUUID()
+            : `network-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
         function setTransformerCondition(rowElement, condition) {
           const active = rowElement.querySelector(".sp-active-condition");
           if (!active) return;
@@ -2048,6 +2053,7 @@
           persist();
         }
         function persist() {
+          ensureNetworkIds();
           projectName = $("projectName").value.trim();
           projects[activeProjectIndex] = {
             name: projectName,
@@ -2815,6 +2821,7 @@
           status = "",
           first = null,
           details = {},
+          networkId = "",
         ) {
           const isFirst = first ?? !$("elements").children.length;
           const rowElement = document.createElement("div");
@@ -2822,6 +2829,7 @@
           const selected = list.includes(type) ? type : "";
           rowElement.className = "element-row";
           rowElement._initialDetails = details || {};
+          rowElement._networkId = networkId;
           rowElement._pairId = details.pairId || "";
           rowElement._pairRole = details.pairRole || "";
           rowElement._pairReason = details.pairReason || "";
@@ -3257,6 +3265,9 @@
             status,
             text: rowElement.querySelector(".tx").value.trim(),
             details,
+            ...(type === "Red MT" || type === "Red BT"
+              ? { networkId: rowElement._networkId || createNetworkId() }
+              : {}),
           };
         }
         function hasValidTransformerPairs(elements) {
@@ -3648,12 +3659,51 @@
         function get(n) {
           return points.find((p) => p.number === n);
         }
-        function isSameNetwork(a, b) {
-          return (
-            a.type === b.type &&
-            String(a.text || "").trim() === String(b.text || "").trim() &&
-            normalizeStatus(a.status) === normalizeStatus(b.status)
+        function networkRecordKey(network) {
+          const details = network.details || {};
+          return JSON.stringify([
+            network.type,
+            String(network.text || "").trim(),
+            normalizeStatus(network.status),
+            Object.keys(details)
+              .sort()
+              .map((key) => [key, details[key]]),
+          ]);
+        }
+        function ensureNetworkIds() {
+          points.forEach((point) =>
+            nets(point).forEach((network) => {
+              if (!network.networkId) network.networkId = createNetworkId();
+            }),
           );
+          const usedByStart = new Map();
+          tramos.forEach((tramo) => {
+            const startPoint = points.find(
+              (point) => point.number === tramo.start,
+            );
+            (tramo.networks || []).forEach((network) => {
+              if (network.type !== "Red MT" && network.type !== "Red BT")
+                return;
+              const candidates = nets(startPoint).filter(
+                  (candidate) =>
+                    networkRecordKey(candidate) === networkRecordKey(network),
+                ),
+                key = `${tramo.start}||${networkRecordKey(network)}`,
+                used = usedByStart.get(key) || new Set();
+              let candidate =
+                candidates.find(
+                  (item) => item.networkId === network.networkId,
+                ) ||
+                candidates.find((item) => !used.has(item.networkId)) ||
+                candidates[0];
+              if (!candidate) {
+                candidate = { networkId: createNetworkId() };
+              }
+              network.networkId = candidate.networkId;
+              used.add(candidate.networkId);
+              usedByStart.set(key, used);
+            });
+          });
         }
         function formatLength(value) {
           const number = Number(value);
@@ -3669,7 +3719,11 @@
             tramo.start !== point.number
               ? []
               : tramo.networks
-                  .filter((network) => isSameNetwork(network, element))
+                  .filter(
+                    (network) =>
+                      network.networkId === element.networkId &&
+                      network.type === element.type,
+                  )
                   .map((network) => ({
                     start: tramo.start,
                     end: tramo.end,
@@ -3789,8 +3843,8 @@
               '<option value="">Seleccione...</option>' +
               points
                 .map(
-                  (p) =>
-                    `<option value="${esc(p.number)}">${esc(p.number)}</option>`,
+                  (point) =>
+                    `<option value="${esc(point.number)}">${esc(point.number)}</option>`,
                 )
                 .join("");
           $("start").innerHTML = all;
@@ -3803,7 +3857,7 @@
           const opts =
             '<option value="">Seleccione...</option>' +
             points
-              .filter((p) => p.number !== start)
+              .filter((point) => point.number !== start)
               .map(
                 (p) =>
                   `<option value="${esc(p.number)}">${esc(p.number)}</option>`,
@@ -3955,6 +4009,7 @@
               element.status,
               elementIndex === 0,
               element.details || {},
+              element.networkId || "",
             ),
           );
           openView("reg");
