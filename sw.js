@@ -1,4 +1,4 @@
-const CACHE = "replanteo-pwa-v6.0.0";
+const CACHE = "replanteo-pwa-v6.0.1-beta";
 const APP_SHELL = [
   "./",
   "./index.html",

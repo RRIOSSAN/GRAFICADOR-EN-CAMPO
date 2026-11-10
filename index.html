@@ -3877,10 +3877,19 @@
           return `<div class="network-choice"><label class="network-main"><input type="checkbox" class="netChoice" value="${index}"><span class="swatch" style="background:${color(network.status)}"></span><span><b>${esc(type)}${details ? ` - ${esc(details)}` : ""}</b>${network.text ? ` · ${esc(network.text)}` : ""}<br><small>${esc(status)}</small></span></label><label class="network-length">L: <input type="number" class="netLength" data-index="${index}" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled> m</label></div>`;
         }
         function showNetworks() {
-          const list = nets(get($("start").value));
+          const usedNetworkIds = new Set(
+              tramos.flatMap((tramo) =>
+                (tramo.networks || [])
+                  .map((network) => network.networkId)
+                  .filter(Boolean),
+              ),
+            ),
+            list = nets(get($("start").value)).filter(
+              (network) => !usedNetworkIds.has(network.networkId),
+            );
           if (!list.length) {
             $("networkInfo").innerHTML =
-              "<b>El apoyo inicial no tiene Red MT o BT.</b>";
+              "<b>No hay redes disponibles en este punto.</b>";
             return;
           }
           $("networkInfo").innerHTML =
@@ -4576,7 +4585,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V6.0.0</div>
+    <div class="version-app">V6.0.1-BETA</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
