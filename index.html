@@ -1426,6 +1426,11 @@
       </section>
     </main>
     <div id="connectionBadge" class="connection-badge">En línea</div>
+    <div
+      id="appVersion"
+      class="version-app"
+      data-version="V6.0.2-BETA-FIX"
+    ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -1466,10 +1471,13 @@
           originalGpsLatitude = null,
           gpsManuallyAdjusted = false,
           gpsAdjusting = false,
+          gpsUpdatesPaused = false,
           pendingTransformerAction = null,
           pendingTransformerPairDelete = null;
         const APP_ACCESS_URL =
           "https://rriossan.github.io/GRAFICADOR-EN-CAMPO/";
+        const APP_VERSION = $("appVersion").dataset.version;
+        $("appVersion").textContent = APP_VERSION;
         function openShareAppModal() {
           const qrContainer = $("shareQr"),
             status = $("shareAppStatus");
@@ -2348,6 +2356,13 @@
           }
           return true;
         }
+        function hasGpsAccuracy(point) {
+          return (
+            point.accuracy !== null &&
+            point.accuracy !== undefined &&
+            Number.isFinite(Number(point.accuracy))
+          );
+        }
         function safeFileName(n) {
           return (
             n
@@ -2973,8 +2988,12 @@
         }
 
         function updateCoordinateFields(lat, lon) {
-          $("c1").value = Number(lon).toFixed(8);
-          $("c2").value = Number(lat).toFixed(8);
+          const [first, second] =
+            mode === "GEO"
+              ? [lon, lat]
+              : proj4("EPSG:4326", "EPSG:3116", [lon, lat]);
+          $("c1").value = Number(first).toFixed(mode === "GEO" ? 8 : 3);
+          $("c2").value = Number(second).toFixed(mode === "GEO" ? 8 : 3);
         }
 
         function miniShow(lat, lon, acc = null) {
@@ -2989,6 +3008,8 @@
             miniMarker.on("drag", (event) => {
               const position = event.target.getLatLng();
               updateCoordinateFields(position.lat, position.lng);
+              gpsManuallyAdjusted = true;
+              updateGpsAdjustedText();
             });
             miniMarker.on("dragend", (event) => {
               const position = event.target.getLatLng();
@@ -3000,6 +3021,7 @@
             miniMarker.setLatLng(ll);
             miniMarker.setIcon(gpsMarkerIcon(gpsManuallyAdjusted));
           }
+          if (!gpsAdjusting) showGpsAdjustmentControls();
           if (acc !== null) {
             if (!accCircle)
               accCircle = L.circle(ll, {
@@ -3016,9 +3038,13 @@
         }
 
         function updateGpsAdjustedText() {
-          const lon = Number($("c1").value);
-          const lat = Number($("c2").value);
-          if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+          const location = latlng({
+            mode,
+            c1: $("c1").value,
+            c2: $("c2").value,
+          });
+          if (!location) return;
+          const [lat, lon] = location;
           const precision =
             lastGpsAccuracy !== null
               ? ` · Precisión original: ±${Math.round(lastGpsAccuracy)} m`
@@ -3077,10 +3103,12 @@
         function stopGps() {
           if (watch !== null) navigator.geolocation.clearWatch(watch);
           watch = null;
+          gpsAdjusting = false;
+          gpsUpdatesPaused = false;
           lock(false);
           $("stopGps").classList.add("hidden");
           $("gps").textContent = "Tomar coordenada con GPS";
-          if (miniMarker && mode === "GEO") showGpsAdjustmentControls();
+          if (miniMarker) showGpsAdjustmentControls();
         }
 
         function startGps() {
@@ -3092,6 +3120,9 @@
           }
           if (!navigator.geolocation) return tell("GPS no disponible.", true);
 
+          if (watch !== null) navigator.geolocation.clearWatch(watch);
+          watch = null;
+          gpsUpdatesPaused = false;
           if (miniMarker?.dragging) miniMarker.dragging.disable();
           gpsAdjusting = false;
           gpsManuallyAdjusted = false;
@@ -3105,8 +3136,15 @@
           originalGpsLatitude = null;
           $("stopGps").classList.remove("hidden");
 
-          watch = navigator.geolocation.watchPosition(
+          let activeWatch = null;
+          activeWatch = navigator.geolocation.watchPosition(
             (position) => {
+              if (
+                watch !== activeWatch ||
+                gpsAdjusting ||
+                gpsUpdatesPaused
+              )
+                return;
               const longitude = position.coords.longitude;
               const latitude = position.coords.latitude;
               updateCoordinateFields(latitude, longitude);
@@ -3117,6 +3155,7 @@
               miniShow(latitude, longitude, position.coords.accuracy);
             },
             (error) => {
+              if (watch !== activeWatch) return;
               stopGps();
               const messages = {
                 1: "Permiso de ubicación denegado. Habilite la ubicación para esta APP.",
@@ -3131,11 +3170,13 @@
             },
             { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 },
           );
+          watch = activeWatch;
         }
 
         function beginGpsAdjustment() {
-          if (!miniMarker || watch !== null) return;
+          if (!miniMarker) return;
           gpsAdjusting = true;
+          gpsUpdatesPaused = true;
           miniMarker.dragging.enable();
           miniMarker.setIcon(gpsMarkerIcon(true));
           $("adjustGps").classList.add("hidden");
@@ -3147,14 +3188,19 @@
 
         function confirmGpsAdjustment() {
           if (!miniMarker) return;
+          const position = miniMarker.getLatLng();
+          updateCoordinateFields(position.lat, position.lng);
           miniMarker.dragging.disable();
           gpsAdjusting = false;
+          gpsUpdatesPaused = true;
           gpsManuallyAdjusted = true;
           $("confirmGps").classList.add("hidden");
           $("adjustGps").classList.remove("hidden");
           $("gpsQuality").className = "gps-quality good";
-          $("gpsQuality").textContent =
-            `Ubicación confirmada · Precisión GPS original: ±${Math.round(lastGpsAccuracy || 0)} m`;
+          const accuracyText = Number.isFinite(lastGpsAccuracy)
+            ? ` · Precisión GPS original: ±${Math.round(lastGpsAccuracy)} m`
+            : "";
+          $("gpsQuality").textContent = `Ubicación confirmada${accuracyText}`;
           updateGpsAdjustedText();
         }
 
@@ -3183,6 +3229,9 @@
           $("cancelEdit").classList.add("hidden");
           lastGpsAccuracy = null;
           lastGpsTime = null;
+          gpsManuallyAdjusted = false;
+          gpsAdjusting = false;
+          gpsUpdatesPaused = false;
           $("gpsPreview").classList.remove("active");
           $("gpsQuality").className = "gps-quality";
           $("gpsQuality").textContent = "GPS sin activar";
@@ -3659,49 +3708,15 @@
         function get(n) {
           return points.find((p) => p.number === n);
         }
-        function networkRecordKey(network) {
-          const details = network.details || {};
-          return JSON.stringify([
-            network.type,
-            String(network.text || "").trim(),
-            normalizeStatus(network.status),
-            Object.keys(details)
-              .sort()
-              .map((key) => [key, details[key]]),
-          ]);
-        }
         function ensureNetworkIds() {
           points.forEach((point) =>
             nets(point).forEach((network) => {
               if (!network.networkId) network.networkId = createNetworkId();
             }),
           );
-          const usedByStart = new Map();
           tramos.forEach((tramo) => {
-            const startPoint = points.find(
-              (point) => point.number === tramo.start,
-            );
             (tramo.networks || []).forEach((network) => {
-              if (network.type !== "Red MT" && network.type !== "Red BT")
-                return;
-              const candidates = nets(startPoint).filter(
-                  (candidate) =>
-                    networkRecordKey(candidate) === networkRecordKey(network),
-                ),
-                key = `${tramo.start}||${networkRecordKey(network)}`,
-                used = usedByStart.get(key) || new Set();
-              let candidate =
-                candidates.find(
-                  (item) => item.networkId === network.networkId,
-                ) ||
-                candidates.find((item) => !used.has(item.networkId)) ||
-                candidates[0];
-              if (!candidate) {
-                candidate = { networkId: createNetworkId() };
-              }
-              network.networkId = candidate.networkId;
-              used.add(candidate.networkId);
-              usedByStart.set(key, used);
+              if (!network.networkId) network.networkId = createNetworkId();
             });
           });
         }
@@ -3721,8 +3736,7 @@
               : tramo.networks
                   .filter(
                     (network) =>
-                      network.networkId === element.networkId &&
-                      network.type === element.type,
+                      network.networkId === element.networkId,
                   )
                   .map((network) => ({
                     start: tramo.start,
@@ -3867,16 +3881,44 @@
           if (preferred && preferred !== start && get(preferred))
             $("end").value = preferred;
         }
-        function networkChoiceHtml(network, index) {
-          const type = network.type === "Red MT" ? "MT" : "BT",
+        function networkCondition(network) {
+          const condition = network.condition || network.status || "Existente";
+          return normalizeStatus(condition) === "reposicion"
+            ? "Reposición"
+            : condition;
+        }
+        function networkDisplayName(network) {
+          const type =
+              network.type === "Red MT"
+                ? "MT"
+                : network.type === "Red BT"
+                  ? "BT"
+                  : network.type,
             details = detailsText(network).replaceAll(" · ", " "),
-            status =
-              normalizeStatus(network.status) === "reposicion"
-                ? "Reposición"
-                : network.status;
-          return `<div class="network-choice"><label class="network-main"><input type="checkbox" class="netChoice" value="${index}"><span class="swatch" style="background:${color(network.status)}"></span><span><b>${esc(type)}${details ? ` - ${esc(details)}` : ""}</b>${network.text ? ` · ${esc(network.text)}` : ""}<br><small>${esc(status)}</small></span></label><label class="network-length">L: <input type="number" class="netLength" data-index="${index}" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled> m</label></div>`;
+            description = network.text ? ` · ${network.text}` : "";
+          return `${type}${details ? ` - ${details}` : ""}${description} (${networkCondition(network)})`;
+        }
+        function hasInvalidNetworkIds() {
+          const networkIds = new Set();
+          for (const point of points) {
+            for (const network of nets(point)) {
+              if (!network.networkId || networkIds.has(network.networkId))
+                return true;
+              networkIds.add(network.networkId);
+            }
+          }
+          return false;
+        }
+        function networkChoiceHtml(network) {
+          const networkId = String(network.networkId);
+          return `<div class="network-choice"><label class="network-main"><input type="checkbox" class="netChoice" value="${esc(networkId)}" data-network-id="${esc(networkId)}"><span class="swatch" style="background:${color(network.status)}"></span><span><b>${esc(networkDisplayName(network))}</b></span></label><label class="network-length">L: <input type="number" class="netLength" data-network-id="${esc(networkId)}" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled> m</label></div>`;
         }
         function showNetworks() {
+          if (hasInvalidNetworkIds()) {
+            $("networkInfo").innerHTML =
+              "<b>No se puede seleccionar una red: se detectaron identificadores internos faltantes o duplicados.</b>";
+            return;
+          }
           const usedNetworkIds = new Set(
               tramos.flatMap((tramo) =>
                 (tramo.networks || [])
@@ -3884,9 +3926,16 @@
                   .filter(Boolean),
               ),
             ),
-            list = nets(get($("start").value)).filter(
+            registered = nets(get($("start").value)),
+            list = registered.filter(
               (network) => !usedNetworkIds.has(network.networkId),
             );
+          const ids = registered.map((network) => network.networkId);
+          if (ids.some((networkId) => !networkId) || new Set(ids).size !== ids.length) {
+            $("networkInfo").innerHTML =
+              "<b>No se puede seleccionar la red: se detectaron identificadores internos faltantes o duplicados.</b>";
+            return;
+          }
           if (!list.length) {
             $("networkInfo").innerHTML =
               "<b>No hay redes disponibles en este punto.</b>";
@@ -3894,13 +3943,13 @@
           }
           $("networkInfo").innerHTML =
             '<div class="helper"><b>Seleccione la red e indique su longitud:</b></div>' +
-            list.map(networkChoiceHtml).join("");
+            list.map((network) => networkChoiceHtml(network)).join("");
           document.querySelectorAll(".netChoice").forEach(
             (box) =>
               (box.onchange = () => {
-                const input = document.querySelector(
-                  `.netLength[data-index="${box.value}"]`,
-                );
+                const input = box
+                  .closest(".network-choice")
+                  ?.querySelector(".netLength");
                 input.disabled = !box.checked;
                 if (!box.checked) input.value = "";
                 else input.focus();
@@ -3916,17 +3965,57 @@
             end = $("end").value;
           if (!start || !end || start === end)
             return tell("Seleccione dos puntos diferentes.", true);
-          const available = nets(get(start)),
-            selected = [];
-          document.querySelectorAll(".netChoice:checked").forEach((box) => {
-            const index = Number(box.value),
-              network = available[index],
-              length = Number(
-                document.querySelector(`.netLength[data-index="${index}"]`)
-                  ?.value,
+          if (hasInvalidNetworkIds())
+            return tell(
+              "No se puede guardar el tramo: se detectaron identificadores internos faltantes o duplicados.",
+              true,
+            );
+          const usedNetworkIds = new Set(
+            tramos.flatMap((tramo) =>
+              (tramo.networks || [])
+                .map((network) => network.networkId)
+                .filter(Boolean),
+            ),
+          );
+          const registered = nets(get(start)),
+            availableById = new Map(
+              registered
+                .filter((network) => !usedNetworkIds.has(network.networkId))
+                .map((network) => [network.networkId, network]),
+            ),
+            selected = [],
+            selectedIds = new Set();
+          const choices = [
+            ...$("networkInfo").querySelectorAll(".network-choice"),
+          ].filter((choice) => choice.querySelector(".netChoice")?.checked);
+          for (const choice of choices) {
+            const checkbox = choice.querySelector(".netChoice"),
+              lengthInput = choice.querySelector(".netLength"),
+              networkId = checkbox.dataset.networkId;
+            if (
+              !networkId ||
+              checkbox.value !== networkId ||
+              lengthInput.dataset.networkId !== networkId
+            )
+              return tell(
+                "La selección de redes cambió. Revise las redes disponibles e inténtelo de nuevo.",
+                true,
               );
-            if (network) selected.push({ network, length });
-          });
+            const network = availableById.get(networkId);
+            if (!network || network.networkId !== networkId)
+              return tell(
+                "Una de las redes seleccionadas ya no está disponible. Revise la selección e inténtelo de nuevo.",
+                true,
+              );
+            if (selectedIds.has(networkId))
+              return tell(
+                "La misma red aparece seleccionada más de una vez. Revise la lista e inténtelo de nuevo.",
+                true,
+              );
+            selectedIds.add(networkId);
+            const length = Number(lengthInput.value);
+            selected.push({ network, networkId, length });
+          }
           if (!selected.length)
             return tell("Seleccione al menos una red MT o BT.", true);
           const invalid = selected.find(
@@ -3941,7 +4030,13 @@
             start,
             end,
             networks: selected.map((item) => ({
-              ...item.network,
+              networkId: item.networkId,
+              name: networkDisplayName(item.network),
+              type: item.network.type,
+              condition: networkCondition(item.network),
+              status: item.network.status,
+              text: item.network.text || "",
+              details: { ...(item.network.details || {}) },
               length: item.length,
             })),
           });
@@ -3955,7 +4050,7 @@
             ? tramos
                 .map(
                   (tramo, index) =>
-                    `<div class="tramo-row"><div><b>${esc(tramo.start)} → ${esc(tramo.end)}</b><br><small>${tramo.networks.map((network) => `${network.type} (${network.status})${formatLength(network.length) ? ` · L: ${formatLength(network.length)} m` : ""}`).join("<br>")}</small></div><button class="danger delT" data-i="${index}">Eliminar</button></div>`,
+                    `<div class="tramo-row"><div><b>${esc(tramo.start)} → ${esc(tramo.end)}</b><br><small>${tramo.networks.map((network) => `${esc(network.name || networkDisplayName(network))}${formatLength(network.length) ? ` · L: ${formatLength(network.length)} m` : ""}`).join("<br>")}</small></div><button class="danger delT" data-i="${index}">Eliminar</button></div>`,
                 )
                 .join("")
             : '<div class="helper">No hay tramos.</div>';
@@ -4007,13 +4102,17 @@
         function editPointAt(index) {
           const p = points[index];
           if (!p) return;
+          stopGps();
+          gpsManuallyAdjusted = false;
+          gpsAdjusting = false;
+          gpsUpdatesPaused = false;
           edit = index;
           $("cancelEdit").classList.remove("hidden");
           $("numero").value = p.number;
           setMode(p.mode);
           $("c1").value = p.c1;
           $("c2").value = p.c2;
-          lastGpsAccuracy = Number.isFinite(+p.accuracy) ? +p.accuracy : null;
+          lastGpsAccuracy = hasGpsAccuracy(p) ? Number(p.accuracy) : null;
           lastGpsTime = p.gpsTime || null;
           if (lastGpsAccuracy !== null) updateGpsQuality(lastGpsAccuracy);
           $("elements").innerHTML = "";
@@ -4049,7 +4148,7 @@
             ? points
                 .map(
                   (p, i) =>
-                    `<div class="point"><div class="point-head"><b>${esc(p.number)}</b><span>${p.mode}${Number.isFinite(+p.accuracy) ? " · GPS ±" + Math.round(+p.accuracy) + " m" : ""}</span></div><div class="point-row">${p.elements.map((e) => `• <span style="color:${color(elementColorStatus(e))}">${esc(elementSummary(e))}</span>`).join("<br>")}</div><div class="actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></div>`,
+                    `<div class="point"><div class="point-head"><b>${esc(p.number)}</b><span>${p.mode}${hasGpsAccuracy(p) ? " · GPS ±" + Math.round(Number(p.accuracy)) + " m" : ""}</span></div><div class="point-row">${p.elements.map((e) => `• <span style="color:${color(elementColorStatus(e))}">${esc(elementSummary(e))}</span>`).join("<br>")}</div><div class="actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></div>`,
                 )
                 .join("")
             : '<div class="helper">No hay puntos.</div>';
@@ -4173,7 +4272,7 @@
                 timeStyle: "medium",
               }).format(new Date()),
             ],
-            ["Versión de la aplicación", "V5.3.5-BETA"],
+            ["Versión de la aplicación", APP_VERSION],
           ];
           $("dxfSummary").innerHTML = summary
             .map(
@@ -4197,7 +4296,7 @@
           const metadata = {
             format: "APP_REPLANTEO",
             schema: 1,
-            version: "V5.3.5-BETA",
+            version: APP_VERSION,
             exportedAt: new Date().toISOString(),
             project: { name: projectName, points, tramos },
           };
@@ -4513,7 +4612,7 @@
             const numero = String(p.number || "").replace(/;/g, ",");
             const coordenadaX = Number(q[0]).toFixed(3);
             const coordenadaY = Number(q[1]).toFixed(3);
-            const precisionGps = Number.isFinite(+p.accuracy)
+            const precisionGps = hasGpsAccuracy(p)
               ? Number(p.accuracy).toFixed(1)
               : "";
             const fechaGps = String(p.gpsTime || "");
@@ -4585,7 +4684,6 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V6.0.1-BETA</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
