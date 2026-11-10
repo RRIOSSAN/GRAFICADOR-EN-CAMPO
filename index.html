@@ -3507,7 +3507,7 @@
         function graphElementLines(element, point) {
           const d = element.details || {};
           let firstLine = "";
-          let secondLine = "";
+          const secondLines = [];
 
           switch (element.type) {
             case "Poste": {
@@ -3534,13 +3534,14 @@
               ]
                 .filter(Boolean)
                 .join(" - ");
-              secondLine = [
+              const transformerDetails = [
                 d.ne && `N.E.: ${d.ne}`,
                 d.serial && `S: ${d.serial}`,
                 element.text,
               ]
                 .filter(Boolean)
                 .join(" - ");
+              if (transformerDetails) secondLines.push(transformerDetails);
               break;
             }
             case "Red BT": {
@@ -3549,7 +3550,9 @@
                 .join("-");
               const route = getNetworkRoutes(point, element)[0];
               if (route)
-                secondLine = `${route.start}>${route.end}${formatLength(route.length) ? ` - ${formatLength(route.length)} m` : ""}`;
+                secondLines.push(
+                  `${route.start}>${route.end}${formatLength(route.length) ? ` - ${formatLength(route.length)} m` : ""}`,
+                );
               break;
             }
             case "Cortacircuito":
@@ -3561,6 +3564,11 @@
               firstLine = ["MT", detailsText(element), element.text]
                 .filter(Boolean)
                 .join(" - ");
+              getNetworkRoutes(point, element).forEach((route) =>
+                secondLines.push(
+                  `${route.start}>${route.end}${formatLength(route.length) ? ` - ${formatLength(route.length)} m` : ""}`,
+                ),
+              );
               break;
             case "Cruce aereo":
               firstLine = ["CRUCE", detailsText(element), element.text]
@@ -3574,7 +3582,7 @@
           }
 
           const lines = [`• ${firstLine}`];
-          if (secondLine) lines.push(`      ${secondLine}`);
+          secondLines.forEach((line) => lines.push(`      ${line}`));
           return lines;
         }
 
@@ -3602,6 +3610,14 @@
             center = (all.length - 1) / 2,
             direction = String(t.start) <= String(t.end) ? 1 : -1;
           return (center - index) * 2 * direction;
+        }
+        function networkTypeVisualOffset(type, start, end) {
+          const direction = String(start) <= String(end) ? 1 : -1;
+          return type === "Red MT"
+            ? 2.5 * direction
+            : type === "Red BT"
+              ? -2.5 * direction
+              : 0;
         }
         function initMap() {
           map = L.map("map").setView([7.89, -72.5], 13);
@@ -3721,8 +3737,11 @@
         function renderLines() {
           lines.clearLayers();
           tramos.forEach((t) => {
-            const a = latlng(get(t.start)),
-              b = latlng(get(t.end));
+            const start = get(t.start),
+              end = get(t.end);
+            if (!start || !end) return;
+            const a = latlng(start),
+              b = latlng(end);
             if (!a || !b) return;
             const meanLat = (((a[0] + b[0]) / 2) * Math.PI) / 180,
               mLat = 111320,
@@ -3736,7 +3755,9 @@
               ny = ux,
               fan = Math.min(5, Math.max(2, len * 0.08));
             t.networks.forEach((n, networkIndex) => {
-              const off = lineLaneOffset(t, networkIndex),
+              const off =
+                  lineLaneOffset(t, networkIndex) +
+                  networkTypeVisualOffset(n.type, t.start, t.end),
                 p1 = [a[0], a[1]],
                 p2 = [
                   a[0] + (uy * fan + ny * off) / mLat,
@@ -4354,15 +4375,24 @@
                 b = (2 * Math.PI * (k + 1)) / 24;
               d += `0\nSOLID\n8\n${layer}\n62\n${col}\n10\n${x}\n20\n${y}\n11\n${x + r * Math.cos(a)}\n21\n${y + r * Math.sin(a)}\n12\n${x + r * Math.cos(b)}\n22\n${y + r * Math.sin(b)}\n13\n${x + r * Math.cos(b)}\n23\n${y + r * Math.sin(b)}\n`;
             }
-            const tx = x + r + 0.8;
-            d += `0\nTEXT\n8\n${layer}\n62\n${col}\n10\n${tx}\n20\n${y}\n40\n1.5\n1\n${p.number}\n`;
+            const textX = x,
+              identifierY = y - r - 1.8,
+              centeredText = (textLayer, textColor, textY, height, text) =>
+                `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${textX}\n20\n${textY}\n40\n${height}\n1\n${text}\n72\n1\n73\n0\n11\n${textX}\n21\n${textY}\n`;
+            d += centeredText(layer, col, identifierY, 1.5, p.number);
             let textLineIndex = 0;
             p.elements.forEach((e) => {
               const effectiveStatus = elementColorStatus(e),
                 textLayer = statusLayer(effectiveStatus),
                 textColor = cadColor(effectiveStatus);
               graphElementLines(e, p).forEach((line) => {
-                d += `0\nTEXT\n8\n${textLayer}\n62\n${textColor}\n10\n${tx}\n20\n${y - 2 - textLineIndex * 1.2}\n40\n0.8\n1\n${dxfSafeText(line)}\n`;
+                d += centeredText(
+                  textLayer,
+                  textColor,
+                  identifierY - 1.8 - textLineIndex * 1.2,
+                  0.8,
+                  dxfSafeText(line),
+                );
                 textLineIndex += 1;
               });
             });
@@ -4379,7 +4409,9 @@
               ny = ux,
               fan = Math.min(7, Math.max(2.5, l * 0.12));
             t.networks.forEach((n, networkIndex) => {
-              const o = lineLaneOffset(t, networkIndex),
+              const o =
+                  lineLaneOffset(t, networkIndex) +
+                  networkTypeVisualOffset(n.type, t.start, t.end),
                 la = statusLayer(n.status),
                 ac = cadColor(n.status),
                 lt = n.type === "Red BT" ? "DASHED" : "CONTINUOUS",
@@ -4483,7 +4515,7 @@
         updateConnection();
       })();
     </script>
-    <div class="version-app">V5.3.5-BETA</div>
+    <div class="version-app">V5.3.7-BETA</div>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () =>
