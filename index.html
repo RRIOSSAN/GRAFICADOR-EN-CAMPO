@@ -1243,7 +1243,7 @@
     </div>
     <header>
       <div class="header-main">
-        <h1>APP de Levantamiento <span id="headerVersion"></span></h1>
+        <h1>APP de Levantamiento</h1>
         <button type="button" id="shareApp" class="share-app-button">
           📱 QR
         </button>
@@ -1548,7 +1548,6 @@
           "https://rriossan.github.io/GRAFICADOR-EN-CAMPO/";
         const APP_VERSION = $("appVersion").dataset.version;
         $("appVersion").textContent = APP_VERSION;
-        $("headerVersion").textContent = APP_VERSION;
         function openShareAppModal() {
           const qrContainer = $("shareQr"),
             status = $("shareAppStatus");
