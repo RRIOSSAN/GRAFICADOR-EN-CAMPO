@@ -2432,6 +2432,8 @@
         const POST_LOADS = {
           Concreto: [510, 750, 1050, 1350, 1500, 2000, 3000],
           Fibra: [510, 750, 1050, 1350],
+          Madera: [],
+          Metálico: [],
         };
         const MT_CALIBERS = [
           "1/0 AWG",
@@ -2539,6 +2541,9 @@
           ).replace(">Reposicion<", ">Reposición<");
         }
         function postTypes(material) {
+          if (material === "Madera" || material === "Metálico") {
+            return POST_HEIGHTS.map((height) => `${height} m`);
+          }
           const loads = POST_LOADS[material];
           if (!loads) return [];
           return POST_HEIGHTS.flatMap((height) =>
@@ -2603,7 +2608,7 @@
               selectField(
                 "sp-material",
                 "Material",
-                ["Concreto", "Fibra"],
+                ["Concreto", "Fibra", "Madera", "Metálico"],
                 material,
                 true,
               ) +
@@ -3573,10 +3578,14 @@
             case "Poste": {
               const materialCode =
                 d.material === "Concreto"
-                  ? "C"
+                  ? "-C"
                   : d.material === "Fibra"
-                    ? "F"
-                    : "";
+                    ? "-F"
+                    : d.material === "Madera"
+                      ? "-Madera"
+                      : d.material === "Metálico"
+                        ? "-Metalico"
+                        : "";
               firstLine = [
                 "Poste",
                 d.poste ? `${d.poste}${materialCode}` : "",
