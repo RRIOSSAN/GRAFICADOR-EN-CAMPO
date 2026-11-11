@@ -838,6 +838,66 @@
         grid-column: 1/-1;
       }
 
+      .transformer-choice-intro {
+        margin: 0 0 16px;
+        color: #475569;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .transformer-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .transformer-option {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid;
+        text-align: left;
+        line-height: 1.4;
+      }
+
+      .transformer-option-change {
+        border-color: #93c5fd;
+        background: #eff6ff;
+        color: #1e40af;
+      }
+
+      .transformer-option-expansion {
+        border-color: #86cba5;
+        background: #effaf3;
+        color: #0f5132;
+      }
+
+      .transformer-option:hover {
+        filter: brightness(0.97);
+      }
+
+      .transformer-option:focus-visible {
+        outline: 3px solid #212529;
+        outline-offset: 2px;
+      }
+
+      .transformer-option-title {
+        font-size: 15px;
+      }
+
+      .transformer-option-description {
+        color: #334155;
+        font-size: 13px;
+        font-weight: 400;
+      }
+
+      .transformer-cancel {
+        width: 100%;
+        margin-top: 16px;
+      }
+
       .project-name-editor {
         margin: 0 0 14px;
       }
@@ -877,6 +937,11 @@
       }
 
       @media (max-width: 430px) {
+        .transformer-options {
+          grid-template-columns: 1fr;
+          grid-auto-rows: 1fr;
+        }
+
         .project-actions {
           grid-template-columns: 1fr;
         }
@@ -1001,6 +1066,34 @@
       </div>
     </div>
     <div
+      id="transformerChoiceModal"
+      class="project-overlay dxf-confirmation hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transformerChoiceTitle"
+      aria-describedby="transformerChoiceDescription"
+    >
+      <div class="project-dialog">
+        <h2 id="transformerChoiceTitle">Agregar transformador</h2>
+        <p id="transformerChoiceDescription" class="transformer-choice-intro">
+          Seleccione el tipo de intervención a registrar.
+        </p>
+        <div class="transformer-options">
+          <button type="button" id="transformerChange" class="transformer-option transformer-option-change">
+            <span class="transformer-option-title"><span aria-hidden="true">🔄</span> CAMBIO</span>
+            <span class="transformer-option-description">Retira un transformador existente e instala uno nuevo en su reemplazo.</span>
+          </button>
+          <button type="button" id="transformerExpansion" class="transformer-option transformer-option-expansion">
+            <span class="transformer-option-title"><span aria-hidden="true">➕</span> AMPLIACIÓN</span>
+            <span class="transformer-option-description">Instala un transformador nuevo sin reemplazar uno existente.</span>
+          </button>
+        </div>
+        <button type="button" id="cancelTransformerChoice" class="secondary transformer-cancel">
+          Cancelar
+        </button>
+      </div>
+    </div>
+    <div
       id="deleteTransformerPairConfirmation"
       class="project-overlay dxf-confirmation hidden"
       role="dialog"
@@ -1042,29 +1135,6 @@
             Continuar
           </button>
           <button type="button" id="cancelNearPoint" class="secondary">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-    <div
-      id="transformerReasonModal"
-      class="project-overlay dxf-confirmation hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="transformerReasonTitle"
-    >
-      <div class="project-dialog">
-        <h2 id="transformerReasonTitle"></h2>
-        <label id="transformerReasonLabel" for="transformerReasonSelect"></label>
-        <select id="transformerReasonSelect">
-          <option value="">Seleccione...</option>
-        </select>
-        <div class="project-actions" style="margin-top: 14px">
-          <button type="button" id="confirmTransformerReason" class="primary">
-            Confirmar
-          </button>
-          <button type="button" id="cancelTransformerReason" class="secondary">
             Cancelar
           </button>
         </div>
@@ -1173,7 +1243,7 @@
     </div>
     <header>
       <div class="header-main">
-        <h1>APP de Levantamiento</h1>
+        <h1>APP de Levantamiento <span id="headerVersion"></span></h1>
         <button type="button" id="shareApp" class="share-app-button">
           📱 QR
         </button>
@@ -1429,7 +1499,7 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V6.0.2-BETA-FIX"
+      data-version="V1.0.1-A"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
@@ -1472,12 +1542,13 @@
           gpsManuallyAdjusted = false,
           gpsAdjusting = false,
           gpsUpdatesPaused = false,
-          pendingTransformerAction = null,
+          pendingTransformerChoice = null,
           pendingTransformerPairDelete = null;
         const APP_ACCESS_URL =
           "https://rriossan.github.io/GRAFICADOR-EN-CAMPO/";
         const APP_VERSION = $("appVersion").dataset.version;
         $("appVersion").textContent = APP_VERSION;
+        $("headerVersion").textContent = APP_VERSION;
         function openShareAppModal() {
           const qrContainer = $("shareQr"),
             status = $("shareAppStatus");
@@ -1565,26 +1636,38 @@
             ? crypto.randomUUID()
             : `network-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         }
-        function setTransformerCondition(rowElement, condition) {
-          const active = rowElement.querySelector(".sp-active-condition");
-          if (!active) return;
-          active.value = condition;
-          rowElement._confirmedTrafoCondition = condition;
-          rowElement
-            .querySelector(".trafo-state")
-            ?.classList.toggle("hidden", condition !== "Instalado");
-          paintElementRow(rowElement);
+        function transformerCondition(rowElement) {
+          const value = rowElement.querySelector(".sp-active-condition")?.value;
+          return value === "Ampliación" ? "Instalado" : value || "";
         }
-        function cancelTransformerReason() {
-          if (pendingTransformerAction) {
-            setTransformerCondition(
-              pendingTransformerAction.rowElement,
-              pendingTransformerAction.previousCondition,
-            );
-          }
-          pendingTransformerAction = null;
-          $("transformerReasonModal").classList.add("hidden");
+        function cancelTransformerChoice() {
+          if (!pendingTransformerChoice) return;
+          const typeSelect = pendingTransformerChoice.typeSelect;
+          pendingTransformerChoice = null;
+          $("transformerChoiceModal").classList.add("hidden");
+          typeSelect.focus();
         }
+        function chooseTransformer(selection) {
+          if (!pendingTransformerChoice) return;
+          const { typeSelect, create } = pendingTransformerChoice;
+          pendingTransformerChoice = null;
+          $("transformerChoiceModal").classList.add("hidden");
+          create(selection);
+          (typeSelect.disabled
+            ? typeSelect.closest(".element-row").querySelector(".sp-ne")
+            : typeSelect
+          ).focus();
+        }
+        $("transformerChange").addEventListener("click", () =>
+          chooseTransformer("Cambio"),
+        );
+        $("transformerExpansion").addEventListener("click", () =>
+          chooseTransformer("Ampliación"),
+        );
+        $("cancelTransformerChoice").addEventListener(
+          "click",
+          cancelTransformerChoice,
+        );
         function cancelTransformerPairDelete() {
           pendingTransformerPairDelete = null;
           $("deleteTransformerPairConfirmation").classList.add("hidden");
@@ -1648,110 +1731,57 @@
               cancelTransformerPairDelete();
           },
         );
-        function requestTransformerReason(rowElement, previousCondition) {
+        function changeTransformerCondition(rowElement) {
           const active = rowElement.querySelector(".sp-active-condition"),
-            requestedCondition = active.value;
-          if (!requestedCondition) {
-            rowElement._confirmedTrafoCondition = requestedCondition;
-            rowElement
-              .querySelector(".trafo-state")
-              ?.classList.add("hidden");
-            return;
-          }
+            selection = active.value;
           if (rowElement._pairId) {
-            setTransformerCondition(rowElement, previousCondition);
+            active.value = rowElement._confirmedTrafoCondition;
             tell(
               "No se puede cambiar la condición de un transformador vinculado a una pareja.",
               true,
             );
             return;
           }
-          if (
-            requestedCondition !== "Instalado" &&
-            requestedCondition !== "Retirado"
-          ) {
-            setTransformerCondition(rowElement, requestedCondition);
-            return;
-          }
-          rowElement
-            .querySelector(".trafo-state")
-            ?.classList.toggle("hidden", requestedCondition !== "Instalado");
-          paintElementRow(rowElement);
-          const isRetirement = requestedCondition === "Retirado",
-            reasons = isRetirement
-              ? [
-                  ["Cambio", "Cambio"],
-                  ["Retiro definitivo", "Retiro definitivo"],
-                ]
-              : [
-                  ["Reposición", "Reposición"],
-                  ["Activo nuevo", "Activo nuevo"],
-                ];
-          pendingTransformerAction = {
-            rowElement,
-            previousCondition,
-            requestedCondition,
-          };
-          $("transformerReasonTitle").textContent = isRetirement
-            ? "Motivo del retiro"
-            : "Motivo de instalación";
-          $("transformerReasonLabel").textContent = isRetirement
-            ? "Seleccione el motivo del retiro"
-            : "Seleccione el motivo de instalación";
-          $("transformerReasonSelect").innerHTML =
-            '<option value="">Seleccione...</option>' +
-            reasons
-              .map(
-                ([value, label]) =>
-                  `<option value="${esc(value)}">${esc(label)}</option>`,
-              )
-              .join("");
-          $("transformerReasonSelect").classList.remove("field-invalid");
-          $("transformerReasonModal").classList.remove("hidden");
-          $("transformerReasonSelect").focus();
-        }
-        function confirmTransformerReason() {
-          const action = pendingTransformerAction,
-            reason = $("transformerReasonSelect").value;
-          if (!action) return;
-          if (!reason) {
-            $("transformerReasonSelect").classList.add("field-invalid");
-            $("transformerReasonSelect").focus();
-            return;
-          }
-          pendingTransformerAction = null;
-          $("transformerReasonModal").classList.add("hidden");
-          const { rowElement, requestedCondition } = action;
-          setTransformerCondition(rowElement, requestedCondition);
-          const createsPair =
-            (requestedCondition === "Retirado" && reason === "Cambio") ||
-            (requestedCondition === "Instalado" && reason === "Reposición");
-          if (!createsPair) return;
-          if (rowElement._pairId) {
-            tell("Ya existe una pareja para este cambio de transformador.", true);
+          if (selection !== "Cambio") {
+            rowElement._confirmedTrafoCondition = selection;
+            rowElement
+              .querySelector(".trafo-state")
+              ?.classList.toggle(
+                "hidden",
+                transformerCondition(rowElement) !== "Instalado",
+              );
+            paintElementRow(rowElement);
             return;
           }
           const pairId = createTransformerPairId(),
-            pairedCondition =
-              requestedCondition === "Retirado" ? "Instalado" : "Retirado",
-            pairReason = reason;
+            pairReason = "Cambio";
           rowElement._pairId = pairId;
           rowElement._pairRole = "source";
           rowElement._pairReason = pairReason;
+          rowElement._conditionLocked = true;
           rowElement._initialDetails = {
             ...rowElement._initialDetails,
             pairId,
             pairRole: "source",
             pairReason,
+            conditionLocked: true,
           };
           rowElement.querySelector(".tp").disabled = true;
+          active.innerHTML = selectOptionsWithBlank(
+            ["Instalado", "Retirado"],
+            "Retirado",
+          );
+          active.disabled = true;
+          rowElement._confirmedTrafoCondition = "Retirado";
+          rowElement.querySelector(".trafo-state").classList.add("hidden");
+          paintElementRow(rowElement);
           row(
             "Transformador",
             "",
             "",
             false,
             {
-              activeCondition: pairedCondition,
+              activeCondition: "Instalado",
               equipmentState: "",
               ne: "",
               serial: "",
@@ -1766,29 +1796,17 @@
             followingRow = rowElement.nextElementSibling;
           elements.insertBefore(pairedRow, followingRow);
         }
-        $("confirmTransformerReason").addEventListener(
-          "click",
-          confirmTransformerReason,
-        );
-        $("cancelTransformerReason").addEventListener(
-          "click",
-          cancelTransformerReason,
-        );
-        $("transformerReasonModal").addEventListener("click", (event) => {
-          if (event.target === $("transformerReasonModal"))
-            cancelTransformerReason();
-        });
         document.addEventListener("keydown", (event) => {
+          if (
+            event.key === "Escape" &&
+            !$("transformerChoiceModal").classList.contains("hidden")
+          )
+            cancelTransformerChoice();
           if (
             event.key === "Escape" &&
             !$("shareAppModal").classList.contains("hidden")
           )
             closeShareAppModal();
-          if (
-            event.key === "Escape" &&
-            !$("transformerReasonModal").classList.contains("hidden")
-          )
-            cancelTransformerReason();
           if (
             event.key === "Escape" &&
             !$("deleteTransformerPairConfirmation").classList.contains("hidden")
@@ -2594,7 +2612,7 @@
           );
         }
 
-        function specificFields(type, details = {}, isFirst = true) {
+        function specificFields(type, details = {}) {
           if (type === "Poste") {
             const material = details.material || "";
             const legacyPost =
@@ -2622,14 +2640,26 @@
           if (type === "Transformador") {
             const activeCondition = details.activeCondition || "";
             const equipmentState = details.equipmentState || "";
+            const conditions = details.pairId || details.conditionLocked
+              ? ["Instalado", "Retirado"]
+              : ["Cambio", "Ampliación"];
+            if (
+              !details.pairId &&
+              !details.conditionLocked &&
+              activeCondition &&
+              activeCondition !== "Instalado"
+            )
+              conditions.push(activeCondition);
             return (
               selectField(
                 "sp-active-condition",
                 "Condición",
-                isFirst
-                  ? ["Instalado", "Retirado", "Existente"]
-                  : ["Instalado", "Retirado"],
-                activeCondition,
+                conditions,
+                !details.pairId &&
+                !details.conditionLocked &&
+                activeCondition === "Instalado"
+                  ? "Ampliación"
+                  : activeCondition,
                 true,
               ) +
               `<div class="trafo-state ${activeCondition === "Instalado" ? "" : "hidden"}">${selectField("sp-equipment-state", "Condición del activo", ["Nuevo", "Reparado"], equipmentState)}</div>` +
@@ -2738,14 +2768,15 @@
           return "Existente";
         }
 
-        function bindSpecificFields(rowElement, isFirst) {
+        function bindSpecificFields(rowElement) {
           const typeSelect = rowElement.querySelector(".tp");
           const detailsBox = rowElement.querySelector(".specific-fields");
           const conditionBox = rowElement.querySelector(".general-condition");
+          let confirmedType = typeSelect.value;
           function rebuild(details = {}) {
             const type = typeSelect.value;
             detailsBox.innerHTML = type
-              ? specificFields(type, details, isFirst)
+              ? specificFields(type, details)
               : "";
             conditionBox.classList.toggle(
               "hidden",
@@ -2754,7 +2785,35 @@
             bindDependencies(rowElement);
             paintElementRow(rowElement);
           }
-          typeSelect.onchange = () => rebuild({});
+          typeSelect.onchange = () => {
+            if (typeSelect.value === "Transformador") {
+              typeSelect.value = confirmedType;
+              pendingTransformerChoice = {
+                typeSelect,
+                create: (selection) => {
+                  typeSelect.value = "Transformador";
+                  confirmedType = typeSelect.value;
+                  rowElement._conditionLocked = selection === "Ampliación";
+                  rowElement._initialDetails = rowElement._conditionLocked
+                    ? { activeCondition: "Instalado", conditionLocked: true }
+                    : {};
+                  rebuild(rowElement._initialDetails);
+                  if (selection === "Cambio") {
+                    rowElement.querySelector(".sp-active-condition").value =
+                      "Cambio";
+                    changeTransformerCondition(rowElement);
+                  }
+                },
+              };
+              $("transformerChoiceModal").classList.remove("hidden");
+              $("transformerChange").focus();
+              return;
+            }
+            confirmedType = typeSelect.value;
+            rowElement._conditionLocked = false;
+            rowElement._initialDetails = {};
+            rebuild({});
+          };
           rebuild(rowElement._initialDetails || {});
         }
 
@@ -2792,13 +2851,10 @@
           const active = rowElement.querySelector(".sp-active-condition");
           if (active) {
             rowElement._confirmedTrafoCondition = active.value;
-            active.disabled = Boolean(rowElement._conditionLocked);
-            active.onchange = () => {
-              requestTransformerReason(
-                rowElement,
-                rowElement._confirmedTrafoCondition,
-              );
-            };
+            active.disabled = Boolean(
+              rowElement._conditionLocked || rowElement._pairId,
+            );
+            active.onchange = () => changeTransformerCondition(rowElement);
           }
           const state = rowElement.querySelector(".sp-equipment-state");
           if (state) state.onchange = () => paintElementRow(rowElement);
@@ -2821,9 +2877,7 @@
           const type = rowElement.querySelector(".tp").value;
           let status = rowElement.querySelector(".st")?.value || "Existente";
           if (type === "Transformador") {
-            const active = rowElement.querySelector(
-              ".sp-active-condition",
-            )?.value;
+            const active = transformerCondition(rowElement);
             status =
               active === "Instalado"
                 ? rowElement.querySelector(".sp-equipment-state")?.value ===
@@ -2887,7 +2941,7 @@
               rowElement.remove();
             });
           $("elements").appendChild(rowElement);
-          bindSpecificFields(rowElement, isFirst);
+          bindSpecificFields(rowElement);
         }
         function addElementRow() {
           row();
@@ -3258,9 +3312,9 @@
             };
           if (type === "Transformador")
             return {
-              activeCondition: value(".sp-active-condition"),
+              activeCondition: transformerCondition(rowElement),
               equipmentState:
-                value(".sp-active-condition") === "Instalado"
+                transformerCondition(rowElement) === "Instalado"
                   ? value(".sp-equipment-state")
                   : "",
               ne: value(".sp-ne").trim(),
@@ -3270,10 +3324,10 @@
                     pairId: rowElement._pairId,
                     pairRole: rowElement._pairRole,
                     pairReason: rowElement._pairReason,
-                    ...(rowElement._conditionLocked
-                      ? { conditionLocked: true }
-                      : {}),
                   }
+                : {}),
+              ...(rowElement._conditionLocked
+                ? { conditionLocked: true }
                 : {}),
             };
           if (["DPS", "Cortacircuito", "Cuchilla"].includes(type))
@@ -3387,6 +3441,13 @@
         };
         $("form").onsubmit = (e) => {
           e.preventDefault();
+          if (pendingTransformerChoice) {
+            $("transformerChange").focus();
+            return tell(
+              "Seleccione el tipo de intervención del transformador.",
+              true,
+            );
+          }
           const number = $("numero").value.trim(),
             c1Value = $("c1").value.trim(),
             c2Value = $("c2").value.trim(),
