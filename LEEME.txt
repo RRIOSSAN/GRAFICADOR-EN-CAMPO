@@ -10,7 +10,7 @@ APP DE REPLANTEO PWA
 
 TRANSFORMADORES: al agregar un transformador, seleccione Cambio para crear los registros vinculados de retiro e instalación, o Ampliación para registrar únicamente la instalación. Las condiciones creadas quedan bloqueadas.
 
-CAPAS DEL MAPA: en Previsualización, despliegue Capas del mapa para mostrar u ocultar independientemente el replanteo y el KMZ. En pantallas estrechas, deslice horizontalmente las filas de botones.
+CAPAS DEL MAPA: en Previsualización, despliegue Capas del mapa para mostrar u ocultar independientemente el replanteo y el KMZ. Los botones se adaptan automáticamente al ancho de la pantalla.
 
 KMZ: cargue un archivo .kmz como referencia temporal. Pulse los elementos del mapa para consultar sus atributos; se omiten campos técnicos, vacíos y valores duplicados. Puede contraer el panel sin alterar la capa, o mostrarla, ocultarla, quitarla o reemplazarla; se elimina al cambiar o importar un levantamiento y no se guarda ni exporta. Se muestran geometrías KML e imágenes locales de superposiciones sin rotación; los enlaces de red y algunas superposiciones no son compatibles.
 

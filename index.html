@@ -348,14 +348,17 @@
 
       .layer-controls {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
-        overflow-x: auto;
         padding: 2px 0 6px;
       }
 
       .layer-controls button {
-        flex: 1 0 auto;
-        white-space: nowrap;
+        flex: 1 1 160px;
+        min-width: min(100%, 160px);
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
 
       .kmz-controls {
@@ -1441,7 +1444,6 @@
             </div>
             <div class="layer-controls kmz-controls">
               <button type="button" id="loadKmz" class="primary">Cargar KMZ</button>
-              <button type="button" id="toggleKmz" class="secondary" disabled aria-pressed="false">Mostrar capa</button>
               <button type="button" id="removeKmz" class="secondary" disabled>Quitar capa</button>
             </div>
             <input id="kmzFile" type="file" accept=".kmz" class="hidden" />
@@ -3864,9 +3866,6 @@
         }
         function updateKmzVisibilityControl() {
           const visible = Boolean(kmzLayer && map?.hasLayer(kmzLayer));
-          $("toggleKmz").disabled = !kmzLayer;
-          $("toggleKmz").textContent = visible ? "Ocultar capa" : "Mostrar capa";
-          $("toggleKmz").setAttribute("aria-pressed", String(visible));
           $("toggleKmzSummary").disabled = !kmzLayer;
           $("toggleKmzSummary").textContent = `KMZ: ${kmzLayer ? visible ? "Visible" : "Oculto" : "No cargado"}`;
           $("toggleKmzSummary").setAttribute("aria-pressed", String(visible));
@@ -4132,7 +4131,6 @@
           else map.addLayer(kmzLayer);
           updateKmzVisibilityControl();
         }
-        $("toggleKmz").onclick = toggleKmzVisibility;
         $("toggleKmzSummary").onclick = toggleKmzVisibility;
         $("removeKmz").onclick = clearKmzLayer;
         $("kmzFile").addEventListener("change", (event) => {
