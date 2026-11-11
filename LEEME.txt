@@ -1,7 +1,7 @@
 APP DE REPLANTEO PWA
 
 1. Publique todos estos archivos juntos mediante HTTPS.
-2. Abra la APP una vez con internet para que el navegador guarde también Leaflet y Proj4.
+2. Abra la APP una vez con internet para que el navegador guarde también Leaflet, Proj4 y las herramientas de KMZ.
 3. Instale la APP desde el menú del navegador: Agregar a pantalla de inicio / Instalar aplicación.
 4. Luego puede apagar los datos. La APP y el GPS seguirán funcionando.
 5. Sin internet no se mostrará el mapa. Las coordenadas GPS sí se capturan y guardan.
@@ -9,5 +9,9 @@ APP DE REPLANTEO PWA
 7. Para mayor precisión, espere al aire libre; el primer posicionamiento sin datos puede tardar hasta 60 segundos.
 
 TRANSFORMADORES: al agregar un transformador, seleccione Cambio para crear los registros vinculados de retiro e instalación, o Ampliación para registrar únicamente la instalación. Las condiciones creadas quedan bloqueadas.
+
+CAPAS DEL MAPA: en Previsualización, despliegue Capas del mapa para mostrar u ocultar independientemente el replanteo y el KMZ. En pantallas estrechas, deslice horizontalmente las filas de botones.
+
+KMZ: cargue un archivo .kmz como referencia temporal. Pulse los elementos del mapa para consultar sus atributos; se omiten campos técnicos, vacíos y valores duplicados. Puede contraer el panel sin alterar la capa, o mostrarla, ocultarla, quitarla o reemplazarla; se elimina al cambiar o importar un levantamiento y no se guarda ni exporta. Se muestran geometrías KML e imágenes locales de superposiciones sin rotación; los enlaces de red y algunas superposiciones no son compatibles.
 
 IMPORTANTE: abrir index.html como archivo local no activa correctamente el Service Worker. Use HTTPS para instalar la PWA.

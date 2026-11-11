@@ -328,6 +328,64 @@
         flex: 1;
       }
 
+      .kmz-reference {
+        margin: 12px 0;
+        padding: 12px;
+        border: 1px solid var(--bd);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .kmz-reference summary {
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .kmz-reference[open] summary {
+        margin-bottom: 8px;
+      }
+
+      .layer-controls {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 0 6px;
+      }
+
+      .layer-controls button {
+        flex: 1 0 auto;
+        white-space: nowrap;
+      }
+
+      .kmz-controls {
+        border-top: 1px solid var(--bd);
+        margin-top: 4px;
+        padding-top: 10px;
+      }
+
+      .kmz-reference .helper {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .kmz-leaflet-popup .leaflet-popup-content {
+        min-width: min(240px, calc(100vw - 84px));
+        max-width: min(390px, calc(100vw - 84px));
+      }
+
+      .kmz-popup {
+        max-height: min(240px, 35vh);
+        overflow-y: auto;
+        overflow-wrap: break-word;
+        word-break: normal;
+        white-space: pre-wrap;
+      }
+
+      .kmz-popup-row + .kmz-popup-row {
+        margin-top: 6px;
+      }
+
       .tramos {
         border-top: 1px solid var(--bd);
         margin-top: 14px;
@@ -1375,6 +1433,20 @@
             <button id="all" class="secondary">Ver todos los puntos</button
             ><button id="loc" class="primary">Centrar en mi ubicación</button>
           </div>
+          <details class="kmz-reference">
+            <summary>Capas del mapa</summary>
+            <div class="layer-controls">
+              <button type="button" id="toggleSurveyLayer" class="secondary" aria-pressed="true">Replanteo: Visible</button>
+              <button type="button" id="toggleKmzSummary" class="secondary" disabled aria-pressed="false">KMZ: No cargado</button>
+            </div>
+            <div class="layer-controls kmz-controls">
+              <button type="button" id="loadKmz" class="primary">Cargar KMZ</button>
+              <button type="button" id="toggleKmz" class="secondary" disabled aria-pressed="false">Mostrar capa</button>
+              <button type="button" id="removeKmz" class="secondary" disabled>Quitar capa</button>
+            </div>
+            <input id="kmzFile" type="file" accept=".kmz" class="hidden" />
+            <p id="kmzStatus" class="helper" role="status" aria-live="polite">Ningún archivo KMZ cargado.</p>
+          </details>
           <div id="map"></div>
           <div id="mapMode" class="map-mode">
             Satélite en línea. Las zonas visualizadas se guardan progresivamente
@@ -1499,11 +1571,13 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V1.0.1-A"
+      data-version="V1.0.3-A"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://unpkg.com/@tmcw/togeojson@6.0.1/dist/togeojson.umd.js"></script>
     <script>
       (() => {
         "use strict";
@@ -1528,6 +1602,11 @@
           map,
           markers,
           lines,
+          surveyLayer,
+          kmzLayer = null,
+          kmzFilename = "",
+          kmzObjectUrls = [],
+          kmzLoadId = 0,
           mini,
           mapLayers = [],
           mapType = "satellite",
@@ -2045,6 +2124,7 @@
           return migratedActive;
         }
         function loadProject(index) {
+          clearKmzLayer();
           activeProjectIndex = index;
           const current = projects[activeProjectIndex];
           points = current.points || [];
@@ -3764,9 +3844,301 @@
               button.onclick = () =>
                 editPointAt(Number(button.dataset.i));
           });
-          lines = L.layerGroup().addTo(map);
-          markers = L.layerGroup().addTo(map);
+          lines = L.layerGroup();
+          markers = L.layerGroup();
+          surveyLayer = L.layerGroup([lines, markers]).addTo(map);
         }
+        $("toggleSurveyLayer").onclick = () => {
+          if (map.hasLayer(surveyLayer)) map.removeLayer(surveyLayer);
+          else map.addLayer(surveyLayer);
+          const visible = map.hasLayer(surveyLayer);
+          $("toggleSurveyLayer").textContent = `Replanteo: ${visible ? "Visible" : "Oculto"}`;
+          $("toggleSurveyLayer").setAttribute("aria-pressed", String(visible));
+        };
+        function releaseKmzLayer() {
+          if (kmzLayer && map) map.removeLayer(kmzLayer);
+          kmzLayer = null;
+          kmzFilename = "";
+          kmzObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+          kmzObjectUrls = [];
+        }
+        function updateKmzVisibilityControl() {
+          const visible = Boolean(kmzLayer && map?.hasLayer(kmzLayer));
+          $("toggleKmz").disabled = !kmzLayer;
+          $("toggleKmz").textContent = visible ? "Ocultar capa" : "Mostrar capa";
+          $("toggleKmz").setAttribute("aria-pressed", String(visible));
+          $("toggleKmzSummary").disabled = !kmzLayer;
+          $("toggleKmzSummary").textContent = `KMZ: ${kmzLayer ? visible ? "Visible" : "Oculto" : "No cargado"}`;
+          $("toggleKmzSummary").setAttribute("aria-pressed", String(visible));
+        }
+        function clearKmzLayer() {
+          kmzLoadId++;
+          releaseKmzLayer();
+          updateKmzVisibilityControl();
+          $("kmzFile").value = "";
+          $("removeKmz").disabled = true;
+          $("kmzStatus").textContent = "Ningún archivo KMZ cargado.";
+        }
+        function kmzFieldName(key) {
+          return String(key).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase().replace(/[^A-Z0-9]/g, "");
+        }
+        function isKmzTechnicalField(key) {
+          const name = kmzFieldName(key);
+          return new Set([
+            "STYLEURL", "STROKE", "STROKEOPACITY", "STROKEWIDTH", "FILL",
+            "FILLOPACITY", "COLOR", "ICON", "ICONSCALE", "ICONHEADING",
+            "MARKERCOLOR", "MARKERSIZE", "MARKERSYMBOL", "GEOMETRYTYPE",
+            "ID", "OID", "GID", "G3EFID", "OBJECTID", "FID", "SHAPEID", "GLOBALID", "GUID",
+            "NODE1ID", "NODE2ID", "NODO1ID", "NODO2ID", "VERTEXID",
+            "LAT1", "LON1", "LAT2", "LON2", "X1", "Y1", "X2", "Y2",
+            "COORDINATES", "COORDENADAS", "COORDINATEPROPERTIES",
+          ]).has(name) ||
+            /^(OBJECTID|G3EFID|SHAPEID|FID)\d+$/.test(name) ||
+            /^(NODO|NODE|VERTEX|VERTICE)\d*ID$/.test(name) ||
+            /^ID(NODO|NODE|VERTEX|VERTICE)\d*$/.test(name) ||
+            /^(LAT|LON|LNG|LATITUD|LONGITUD|LATITUDE|LONGITUDE|X|Y|Z|COORDENADA|COORDINATE)(X|Y|Z)?(INICIAL|FINAL|INICIO|FIN|START|END|1|2)$/.test(name) ||
+            /^(INICIAL|FINAL|INICIO|FIN|START|END)(LAT|LON|LNG|LATITUD|LONGITUD|LATITUDE|LONGITUDE|X|Y|Z)$/.test(name);
+        }
+        function kmzDisplayFields(properties) {
+          const fields = [];
+          function add(key, value) {
+            if (isKmzTechnicalField(key) || value === null || value === undefined)
+              return;
+            const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+            if (!text || !text.trim() || text === "{}" || text === "[]") return;
+            fields.push({ key, text: text.trim() });
+          }
+          function addDescription(value) {
+            const html = typeof value === "object" && value?.["@type"] === "html"
+              ? value.value : typeof value === "string" ? value : "";
+            if (!html) return;
+            function addTextDescription(text) {
+              const freeText = [];
+              text.split("\n").forEach((line) => {
+                const match = line.trim().match(/^([^:]{1,80}):(?:\s+|$)(.*)$/);
+                if (match) add(match[1], match[2]);
+                else if (line.trim()) freeText.push(line.trim());
+              });
+              if (freeText.length) add("description", freeText.join("\n"));
+            }
+            if (typeof value === "string" && !/<\/?[a-z][^>]*>/i.test(value)) {
+              addTextDescription(value);
+              return;
+            }
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            doc.querySelectorAll("table").forEach((table) => {
+              const rows = [...table.querySelectorAll("tr")].map((row) =>
+                [...row.children].filter((cell) => /^(TD|TH)$/.test(cell.tagName)),
+              );
+              const header = rows[0];
+              if (header?.length > 1 && header.every((cell) => cell.tagName === "TH")) {
+                rows.slice(1).forEach((row) => row.forEach((cell, index) => {
+                  if (header[index]) add(header[index].textContent.trim(), cell.textContent);
+                }));
+              } else {
+                rows.forEach((row) => {
+                  if (row.length === 2) add(row[0].textContent.trim().replace(/:$/, ""), row[1].textContent);
+                  else if (row.length) add("Descripción", row.map((cell) => cell.textContent.trim()).join(" "));
+                });
+              }
+              table.remove();
+            });
+            doc.querySelectorAll("br, p, div, li").forEach((element) =>
+              element.appendChild(doc.createTextNode("\n")),
+            );
+            addTextDescription(doc.body.textContent);
+          }
+          Object.entries(properties || {}).forEach(([key, value]) => {
+            if (key === "description") addDescription(value);
+            else add(key, value);
+          });
+          const priority = (key) => {
+            const name = kmzFieldName(key);
+            if (name === "CODIGOOPERATIVO") return 3;
+            if (name === "CODIGO") return 2;
+            if (/^CODIGO\d+$/.test(name)) return 1;
+            return 0;
+          };
+          const unique = new Map();
+          fields.forEach((field) => {
+            const previous = unique.get(field.text);
+            if (!previous || priority(field.key) > priority(previous.key))
+              unique.set(field.text, field);
+          });
+          return [...unique.values()];
+        }
+        function kmzPopup(properties) {
+          const content = document.createElement("div");
+          content.className = "kmz-popup";
+          const entries = kmzDisplayFields(properties);
+          if (!entries.length) {
+            content.textContent = "Este elemento no tiene atributos de consulta disponibles.";
+            return content;
+          }
+          for (const { key, text: value } of entries) {
+            const row = document.createElement("div"),
+              label = document.createElement("strong"),
+              text = document.createElement("span");
+            row.className = "kmz-popup-row";
+            label.textContent = `${key === "name" ? "Nombre" : key === "description" ? "Descripción" : key}: `;
+            text.textContent = value;
+            row.append(label, text);
+            content.appendChild(row);
+          }
+          return content;
+        }
+        async function loadKmzFile(file) {
+          const loadId = ++kmzLoadId;
+          const objectUrls = [];
+          $("kmzFile").value = "";
+          $("removeKmz").disabled = false;
+          try {
+            if (!/\.kmz$/i.test(file.name))
+              throw new Error("Seleccione un archivo con extensión .kmz.");
+            if (!window.JSZip || !window.toGeoJSON)
+              throw new Error(
+                "No se pudieron cargar las herramientas KMZ. Conéctese a internet y vuelva a abrir la aplicación.",
+              );
+            $("kmzStatus").textContent = `Cargando: ${file.name}…${kmzFilename ? ` Archivo actual: ${kmzFilename}.` : ""}`;
+            const zip = await JSZip.loadAsync(await file.arrayBuffer()),
+              files = Object.values(zip.files).filter((entry) => !entry.dir),
+              kmlFiles = files.filter((entry) => /\.kml$/i.test(entry.name)),
+              kml = kmlFiles.find((entry) => entry.name.toLowerCase() === "doc.kml") || kmlFiles[0];
+            if (!kml) throw new Error("El archivo KMZ no contiene un archivo KML.");
+            const xml = new DOMParser().parseFromString(await kml.async("string"), "application/xml");
+            if (xml.querySelector("parsererror") || xml.documentElement.localName !== "kml")
+              throw new Error("El archivo KML del KMZ no es válido.");
+            const images = new Map();
+            async function imageUrl(href) {
+              if (!href || /^(?:[a-z][a-z0-9+.-]*:|\/|\\)/i.test(href)) return "";
+              const base = new URL(kml.name, "https://kmz.invalid/"),
+                resolved = new URL(href.replace(/\\/g, "/"), base);
+              if (resolved.origin !== "https://kmz.invalid") return "";
+              const path = decodeURIComponent(resolved.pathname.slice(1)),
+                entry = zip.file(path);
+              if (!entry || !/\.(png|jpe?g|gif|webp)$/i.test(path)) return "";
+              if (!images.has(path)) {
+                const extension = path.split(".").pop().toLowerCase(),
+                  type = extension === "jpg" ? "jpeg" : extension,
+                  blob = await entry.async("uint8array"),
+                  url = URL.createObjectURL(new Blob([blob], { type: `image/${type}` }));
+                images.set(path, url);
+                objectUrls.push(url);
+              }
+              return images.get(path);
+            }
+            const geojson = toGeoJSON.kml(xml);
+            let unsupported =
+              kmlFiles.length > 1 ||
+              xml.getElementsByTagName("NetworkLink").length > 0;
+            const featureIcons = new Map();
+            for (const feature of geojson.features) {
+              if (feature.properties?.icon) {
+                const icon = await imageUrl(feature.properties.icon);
+                if (icon) featureIcons.set(feature, icon);
+                else unsupported = true;
+              }
+            }
+            const layer = L.geoJSON(geojson, {
+              pointToLayer: (feature, latlng) =>
+                featureIcons.has(feature)
+                  ? L.marker(latlng, {
+                      icon: L.icon({
+                        iconUrl: featureIcons.get(feature),
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14],
+                      }),
+                    })
+                  : L.circleMarker(latlng, { radius: 6, color: "#2563eb", fillOpacity: 0.8 }),
+              style: (feature) => ({
+                color: feature.properties?.stroke || "#2563eb",
+                weight: feature.properties?.["stroke-width"] ?? 3,
+                opacity: feature.properties?.["stroke-opacity"] ?? 1,
+                fillColor: feature.properties?.fill || "#2563eb",
+                fillOpacity: feature.properties?.["fill-opacity"] ?? 0.2,
+              }),
+              onEachFeature: (feature, featureLayer) =>
+                featureLayer.bindPopup(kmzPopup(feature.properties), {
+                  className: "kmz-leaflet-popup",
+                  minWidth: 240,
+                  maxWidth: 390,
+                }),
+            });
+            const overlayFeatures = geojson.features.filter(
+              (feature) => feature.properties?.["@geometry-type"] === "groundoverlay",
+            );
+            let overlayIndex = 0;
+            for (const overlay of xml.getElementsByTagName("GroundOverlay")) {
+              const overlayFeature = overlayFeatures[overlayIndex++];
+              const box = overlay.getElementsByTagName("LatLonBox")[0],
+                href = overlay.getElementsByTagName("href")[0]?.textContent?.trim(),
+                url = await imageUrl(href),
+                value = (name) => {
+                  const text = box?.getElementsByTagName(name)[0]?.textContent?.trim();
+                  return text ? Number(text) : NaN;
+                },
+                north = value("north"), south = value("south"),
+                east = value("east"), west = value("west"),
+                rotation = value("rotation");
+              if (!url || ![north, south, east, west].every(Number.isFinite) ||
+                  north < south || north > 90 || south < -90 ||
+                  east < west || east > 180 || west < -180 ||
+                  (Number.isFinite(rotation) && rotation !== 0)) {
+                unsupported = true;
+                continue;
+              }
+              layer.addLayer(
+                L.imageOverlay(url, [[south, west], [north, east]], { interactive: true })
+                  .bindPopup(kmzPopup(overlayFeature?.properties), {
+                    className: "kmz-leaflet-popup",
+                    minWidth: 240,
+                    maxWidth: 390,
+                  }),
+              );
+            }
+            if (!layer.getBounds().isValid())
+              throw new Error("El KMZ no contiene geometrías compatibles para mostrar.");
+            if (loadId !== kmzLoadId) {
+              objectUrls.forEach((url) => URL.revokeObjectURL(url));
+              return;
+            }
+            try {
+              layer.addTo(map);
+              map.fitBounds(layer.getBounds(), { padding: [25, 25], maxZoom: 18 });
+            } catch (error) {
+              map.removeLayer(layer);
+              throw error;
+            }
+            releaseKmzLayer();
+            kmzLayer = layer;
+            kmzFilename = file.name;
+            kmzObjectUrls = objectUrls;
+            updateKmzVisibilityControl();
+            $("removeKmz").disabled = false;
+            $("kmzStatus").textContent = `Archivo cargado: ${file.name}${unsupported ? " · Algunos recursos, enlaces o archivos KML adicionales no son compatibles." : ""}`;
+          } catch (error) {
+            objectUrls.forEach((url) => URL.revokeObjectURL(url));
+            if (loadId !== kmzLoadId) return;
+            console.error("No se pudo cargar el archivo KMZ.", error);
+            $("removeKmz").disabled = !kmzLayer;
+            $("kmzStatus").textContent = `No se pudo cargar el KMZ: ${error.message}${kmzFilename ? ` Archivo actual: ${kmzFilename}.` : ""}`;
+          }
+        }
+        $("loadKmz").onclick = () => $("kmzFile").click();
+        function toggleKmzVisibility() {
+          if (!kmzLayer || !map) return;
+          if (map.hasLayer(kmzLayer)) map.removeLayer(kmzLayer);
+          else map.addLayer(kmzLayer);
+          updateKmzVisibilityControl();
+        }
+        $("toggleKmz").onclick = toggleKmzVisibility;
+        $("toggleKmzSummary").onclick = toggleKmzVisibility;
+        $("removeKmz").onclick = clearKmzLayer;
+        $("kmzFile").addEventListener("change", (event) => {
+          const file = event.target.files?.[0];
+          if (file) loadKmzFile(file);
+        });
         function nets(p) {
           return (
             p?.elements.filter(
@@ -4525,6 +4897,7 @@
         };
         function applyDxfImport(mode) {
           if (!pendingDxfImport) return;
+          clearKmzLayer();
           const imported = pendingDxfImport.project;
           let skippedPoints = 0;
           if (mode === "replace") {
