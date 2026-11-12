@@ -265,7 +265,9 @@
       }
 
       #gpsMiniMap {
-        height: 220px;
+        width: calc(100% + 18px);
+        height: clamp(360px, 58vh, 650px);
+        margin: 0 -9px;
         border-radius: 8px;
       }
 
@@ -301,7 +303,12 @@
         font-size: 20px;
       }
 
-      .mini-kmz-button {
+      .map-layer-control {
+        display: flex;
+        gap: 6px;
+      }
+
+      .map-layer-button {
         min-width: 44px;
         min-height: 44px;
         padding: 8px 10px;
@@ -312,13 +319,13 @@
         font-size: 12px;
       }
 
-      .mini-kmz-button[aria-pressed="true"] {
+      .map-layer-button[aria-pressed="true"] {
         border-color: #1d4ed8;
         background: #1d4ed8;
         color: #fff;
       }
 
-      .mini-kmz-button:disabled {
+      .map-layer-button:disabled {
         opacity: 0.7;
         cursor: default;
       }
@@ -399,8 +406,69 @@
         transform: translate(-50%, -50%);
       }
 
-      body.map-fullscreen {
+      body.map-fullscreen,
+      body.mini-map-fullscreen {
         overflow: hidden;
+      }
+
+      body.mini-map-fullscreen {
+        --gps-fullscreen-button-width: min(96px, calc((100vw - 32px) / 3));
+      }
+
+      body.mini-map-fullscreen #gpsMiniMap {
+        /* Leaflet assigns position: relative inline when initializing the map. */
+        position: fixed !important;
+        inset: 0;
+        z-index: 10001;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+      }
+
+      body.mini-map-fullscreen #gpsAdjustActions {
+        position: fixed;
+        z-index: 10002;
+        bottom: 30px;
+        left: calc(16px + var(--gps-fullscreen-button-width));
+        gap: 6px;
+        flex-wrap: nowrap;
+        margin: 0;
+      }
+
+      body.mini-map-fullscreen #gpsMiniMap .map-layer-control {
+        margin-bottom: 30px;
+      }
+
+      body.mini-map-fullscreen #gpsAdjustActions button,
+      body.mini-map-fullscreen #toggleMiniKmz {
+        width: var(--gps-fullscreen-button-width);
+        height: 44px;
+        padding: 4px;
+        box-shadow: 0 1px 5px #0003;
+        font-size: clamp(9px, 3.4vw, 11px);
+        white-space: nowrap;
+      }
+
+      body.mini-map-fullscreen #gpsAdjustActions button {
+        border: 1px solid #cbd5e1;
+      }
+
+      body.mini-map-fullscreen #gpsAdjustActions .secondary {
+        background: rgba(255, 255, 255, 0.96);
+      }
+
+      .gps-compact-label {
+        display: none;
+      }
+
+      body.mini-map-fullscreen .gps-full-label {
+        display: none;
+      }
+
+      body.mini-map-fullscreen .gps-compact-label {
+        display: inline;
       }
 
       body.map-fullscreen > :not(main) {
@@ -501,16 +569,6 @@
         line-height: 1.5;
       }
 
-      .toolbar {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 9px;
-      }
-
-      .toolbar button {
-        flex: 1;
-      }
-
       .kmz-reference {
         margin: 12px 0;
         padding: 12px;
@@ -555,22 +613,22 @@
         overflow-wrap: anywhere;
       }
 
-      .map-tool-section {
-        margin: 8px 0 0;
-        padding: 9px 10px;
-        border: 1px solid var(--bd);
-        border-radius: 8px;
-        background: #fff;
+      .kmz-file-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
       }
 
-      .map-tool-section summary {
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
+      .kmz-file-row .helper {
+        flex: 1;
+        min-width: 0;
       }
 
-      .map-tool-section[open] > summary {
-        margin-bottom: 8px;
+      .kmz-file-row button {
+        flex: 0 0 auto;
+        padding: 5px 8px;
+        font-size: 12px;
       }
 
       .kmz-leaflet-popup .leaflet-popup-content {
@@ -729,10 +787,6 @@
         .menu button {
           font-size: 12px;
           padding: 9px 3px;
-        }
-
-        .toolbar {
-          flex-direction: column;
         }
 
         .actions button {
@@ -1711,10 +1765,10 @@
                 <div id="gpsText" class="helper"></div>
                 <div id="gpsQuality" class="gps-quality">GPS sin activar</div>
                 <div id="gpsAdjustActions" class="gps-adjust-actions">
-                  <button type="button" id="adjustGps" class="secondary">
-                    Ajustar coordenada</button
-                  ><button type="button" id="confirmGps" class="primary hidden">
-                    Confirmar ubicación</button
+                  <button type="button" id="adjustGps" class="secondary" aria-label="Ajustar coordenada">
+                    <span class="gps-full-label">Ajustar coordenada</span><span class="gps-compact-label" aria-hidden="true">Ajustar</span></button
+                  ><button type="button" id="confirmGps" class="primary hidden" aria-label="Confirmar ubicación">
+                    <span class="gps-full-label">Confirmar ubicación</span><span class="gps-compact-label" aria-hidden="true">Confirmar</span></button
                   ><button type="button" id="resumeGps" class="secondary">
                     Reanudar GPS
                   </button>
@@ -1764,57 +1818,23 @@
       </section>
       <section id="prev" class="view">
         <div class="card">
-          <details class="kmz-reference map-tools">
-            <summary>Herramientas del mapa</summary>
-            <details class="map-tool-section">
-              <summary>Navegación</summary>
-              <div class="toolbar">
-                <button id="all" class="secondary">Ver todos los puntos</button
-                ><button id="loc" class="primary">Centrar en mi ubicación</button>
-              </div>
-            </details>
-            <details class="map-tool-section">
-              <summary>Capas del mapa</summary>
-              <div class="layer-controls">
-                <button
-                  type="button"
-                  id="toggleSurveyLayer"
-                  class="secondary"
-                  aria-pressed="true"
-                >
-                  Replanteo: Visible
-                </button>
-                <button
-                  type="button"
-                  id="toggleKmzSummary"
-                  class="secondary"
-                  disabled
-                  aria-pressed="false"
-                >
-                  KMZ: No cargado
-                </button>
-              </div>
-            </details>
-            <details class="map-tool-section">
-              <summary>Herramientas KMZ</summary>
-              <div class="layer-controls kmz-controls">
-                <button type="button" id="loadKmz" class="primary">
-                  Cargar KMZ
-                </button>
-                <button type="button" id="removeKmz" class="secondary" disabled>
-                  Quitar capa
-                </button>
-              </div>
-              <input id="kmzFile" type="file" accept=".kmz" class="hidden" />
-              <p
-                id="kmzStatus"
-                class="helper"
-                role="status"
-                aria-live="polite"
-              >
-                Ningún archivo KMZ cargado.
-              </p>
-            </details>
+          <details class="kmz-reference">
+            <summary>Herramientas KMZ</summary>
+            <div class="layer-controls kmz-controls">
+              <button type="button" id="loadKmz" class="primary">
+                Cargar KMZ
+              </button>
+            </div>
+            <input id="kmzFile" type="file" accept=".kmz" multiple class="hidden" />
+            <p
+              id="kmzStatus"
+              class="helper"
+              role="status"
+              aria-live="polite"
+            >
+              Ningún archivo KMZ cargado.
+            </p>
+            <div id="kmzFiles"></div>
           </details>
           <div id="map"></div>
           <div id="mapMode" class="map-mode">
@@ -1980,8 +2000,7 @@
           surveyLayer,
           kmzLayer = null,
           miniKmzLayer = null,
-          kmzFilename = "",
-          kmzObjectUrls = [],
+          kmzFiles = [],
           kmzLoadId = 0,
           mini,
           mapLayers = [],
@@ -3496,12 +3515,15 @@
           });
         }
 
-        function setMapFullscreen(enabled) {
-          if (!map) return;
-          const center = map.getCenter(),
-            zoom = map.getZoom();
-          document.body.classList.toggle("map-fullscreen", enabled);
-          const button = map
+        let fullscreenMap = null;
+        function setMapFullscreen(mapInstance, enabled) {
+          if (!mapInstance) return;
+          const center = mapInstance.getCenter(),
+            zoom = mapInstance.getZoom(),
+            fullscreenClass = mapInstance === mini ? "mini-map-fullscreen" : "map-fullscreen";
+          document.body.classList.toggle(fullscreenClass, enabled);
+          fullscreenMap = enabled ? mapInstance : null;
+          const button = mapInstance
             .getContainer()
             .querySelector(".map-fullscreen-button");
           if (button) {
@@ -3518,17 +3540,14 @@
             button.setAttribute("aria-pressed", String(enabled));
           }
           requestAnimationFrame(() => {
-            map.invalidateSize({ pan: false });
-            map.setView(center, zoom, { animate: false });
+            mapInstance.invalidateSize({ pan: false });
+            mapInstance.setView(center, zoom, { animate: false });
           });
         }
 
         document.addEventListener("keydown", (event) => {
-          if (
-            event.key === "Escape" &&
-            document.body.classList.contains("map-fullscreen")
-          )
-            setMapFullscreen(false);
+          if (event.key === "Escape" && fullscreenMap)
+            setMapFullscreen(fullscreenMap, false);
         });
 
         function addMapTypeControl(mapInstance) {
@@ -3575,33 +3594,28 @@
                 "button",
                 "map-type-button",
                 actions,
-              ),
-              isMainMap = mapInstance.getContainer().id === "map";
+              );
             mapTypeButton.type = "button";
             mapTypeButton.textContent = "🗺️";
             mapTypeButton.title = "Tipo de mapa";
             mapTypeButton.setAttribute("aria-label", "Seleccionar tipo de mapa");
             mapTypeButton.setAttribute("aria-expanded", "false");
-            if (isMainMap) {
-              const fullscreenButton = L.DomUtil.create(
-                "button",
-                "map-type-button map-fullscreen-button",
-                actions,
-              );
-              fullscreenButton.type = "button";
-              fullscreenButton.textContent = "⛶";
-              fullscreenButton.title = "Pantalla completa";
-              fullscreenButton.setAttribute(
-                "aria-label",
-                "Expandir el mapa a pantalla completa",
-              );
-              fullscreenButton.setAttribute("aria-pressed", "false");
-              L.DomEvent.on(fullscreenButton, "click", () =>
-                setMapFullscreen(
-                  !document.body.classList.contains("map-fullscreen"),
-                ),
-              );
-            }
+            const fullscreenButton = L.DomUtil.create(
+              "button",
+              "map-type-button map-fullscreen-button",
+              actions,
+            );
+            fullscreenButton.type = "button";
+            fullscreenButton.textContent = "⛶";
+            fullscreenButton.title = "Pantalla completa";
+            fullscreenButton.setAttribute(
+              "aria-label",
+              "Expandir el mapa a pantalla completa",
+            );
+            fullscreenButton.setAttribute("aria-pressed", "false");
+            L.DomEvent.on(fullscreenButton, "click", () =>
+              setMapFullscreen(mapInstance, fullscreenMap !== mapInstance),
+            );
             const menu = L.DomUtil.create(
                 "div",
                 "map-type-menu hidden",
@@ -3643,6 +3657,24 @@
           setMapType(mapType);
         }
 
+        function addMapLayerControls(mapInstance, controls) {
+          const layerControl = L.control({ position: "bottomleft" });
+          layerControl.onAdd = () => {
+            const container = L.DomUtil.create("div", "map-layer-control");
+            controls.forEach(({ id, text, onClick }) => {
+              const button = L.DomUtil.create("button", "map-layer-button", container);
+              button.type = "button";
+              button.id = id;
+              button.textContent = text;
+              L.DomEvent.on(button, "click", onClick);
+            });
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+            return container;
+          };
+          layerControl.addTo(mapInstance);
+        }
+
         function initMini() {
           if (mini) return;
           mini = L.map("gpsMiniMap").setView(
@@ -3650,23 +3682,16 @@
             18,
           );
           addMapTypeControl(mini);
-          const kmzControl = L.control({ position: "bottomleft" });
-          kmzControl.onAdd = () => {
-            const button = L.DomUtil.create("button", "mini-kmz-button");
-            button.type = "button";
-            button.id = "toggleMiniKmz";
-            button.textContent = "KMZ";
-            L.DomEvent.disableClickPropagation(button);
-            L.DomEvent.disableScrollPropagation(button);
-            L.DomEvent.on(button, "click", () => {
+          addMapLayerControls(mini, [{
+            id: "toggleMiniKmz",
+            text: "KMZ",
+            onClick: () => {
               if (!miniKmzLayer) return;
               if (mini.hasLayer(miniKmzLayer)) mini.removeLayer(miniKmzLayer);
               else mini.addLayer(miniKmzLayer);
               updateKmzVisibilityControl();
-            });
-            return button;
-          };
-          kmzControl.addTo(mini);
+            },
+          }]);
           if (miniKmzLayer) miniKmzLayer.addTo(mini);
           updateKmzVisibilityControl();
         }
@@ -4395,6 +4420,11 @@
           map.createPane("labelsPane");
           map.getPane("labelsPane").classList.add("leaflet-labels-pane");
           addMapTypeControl(map);
+          addMapLayerControls(map, [
+            { id: "toggleMapKmz", text: "KMZ", onClick: toggleKmzVisibility },
+            { id: "toggleSurveyLayer", text: "Replanteo", onClick: toggleSurveyVisibility },
+          ]);
+          updateKmzVisibilityControl();
           const mapNavigationControl = L.control({
             position: "bottomright",
           });
@@ -4424,12 +4454,12 @@
               "aria-label",
               "Centrar en mi ubicación",
             );
-            locationButton.onclick = $("loc").onclick;
+            locationButton.onclick = centerMapOnLocation;
             allPointsButton.type = "button";
             allPointsButton.textContent = "🔎";
             allPointsButton.title = "Ver todos los puntos";
             allPointsButton.setAttribute("aria-label", "Ver todos los puntos");
-            allPointsButton.onclick = $("all").onclick;
+            allPointsButton.onclick = () => renderMap(true);
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
             return container;
@@ -4445,44 +4475,88 @@
           lines = L.layerGroup();
           markers = L.layerGroup();
           surveyLayer = L.layerGroup([lines, markers]).addTo(map);
+          updateSurveyVisibilityControl();
         }
-        $("toggleSurveyLayer").onclick = () => {
+        function updateSurveyVisibilityControl() {
+          const visible = map.hasLayer(surveyLayer),
+            button = $("toggleSurveyLayer"),
+            label = `Replanteo: ${visible ? "Visible" : "Oculto"}`;
+          button.title = label;
+          button.setAttribute("aria-label", label);
+          button.setAttribute("aria-pressed", String(visible));
+        }
+        function toggleSurveyVisibility() {
           if (map.hasLayer(surveyLayer)) map.removeLayer(surveyLayer);
           else map.addLayer(surveyLayer);
-          const visible = map.hasLayer(surveyLayer);
-          $("toggleSurveyLayer").textContent = `Replanteo: ${visible ? "Visible" : "Oculto"}`;
-          $("toggleSurveyLayer").setAttribute("aria-pressed", String(visible));
-        };
+          updateSurveyVisibilityControl();
+        }
         function releaseKmzLayer() {
           if (kmzLayer && map) map.removeLayer(kmzLayer);
           if (miniKmzLayer && mini) mini.removeLayer(miniKmzLayer);
+          kmzFiles.forEach((file) =>
+            file.objectUrls.forEach((url) => URL.revokeObjectURL(url)),
+          );
+          kmzFiles = [];
           kmzLayer = null;
           miniKmzLayer = null;
-          kmzFilename = "";
-          kmzObjectUrls.forEach((url) => URL.revokeObjectURL(url));
-          kmzObjectUrls = [];
+        }
+        function renderKmzFiles() {
+          const list = $("kmzFiles");
+          list.replaceChildren();
+          kmzFiles.forEach((file) => {
+            const row = document.createElement("div"),
+              info = document.createElement("span"),
+              button = document.createElement("button");
+            row.className = "kmz-file-row";
+            info.className = "helper";
+            info.textContent = `Archivo cargado: ${file.name}${file.unsupported ? " · Algunos recursos, enlaces o archivos KML adicionales no son compatibles." : ""}`;
+            button.type = "button";
+            button.className = "danger";
+            button.textContent = "🗑";
+            button.setAttribute("aria-label", `Eliminar KMZ: ${file.name}`);
+            button.title = `Eliminar KMZ: ${file.name}`;
+            button.onclick = () => {
+              kmzLayer.removeLayer(file.layer);
+              miniKmzLayer.removeLayer(file.miniLayer);
+              file.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+              kmzFiles = kmzFiles.filter((entry) => entry !== file);
+              if (!kmzFiles.length) releaseKmzLayer();
+              renderKmzFiles();
+              updateKmzVisibilityControl();
+              if (!$("loadKmz").disabled) updateKmzStatus();
+            };
+            row.append(info, button);
+            list.appendChild(row);
+          });
+        }
+        function updateKmzStatus() {
+          const count = kmzFiles.length,
+            plural = count === 1 ? "" : "s";
+          $("kmzStatus").textContent = count
+            ? `${count} archivo${plural} KMZ cargado${plural}.`
+            : "Ningún archivo KMZ cargado.";
         }
         function updateKmzVisibilityControl() {
           const visible = Boolean(kmzLayer && map?.hasLayer(kmzLayer));
-          $("toggleKmzSummary").disabled = !kmzLayer;
-          $("toggleKmzSummary").textContent = `KMZ: ${kmzLayer ? visible ? "Visible" : "Oculto" : "No cargado"}`;
-          $("toggleKmzSummary").setAttribute("aria-pressed", String(visible));
-          const miniButton = $("toggleMiniKmz");
-          if (miniButton) {
-            const miniVisible = Boolean(miniKmzLayer && mini.hasLayer(miniKmzLayer));
-            miniButton.disabled = !miniKmzLayer;
-            const label = `KMZ: ${miniKmzLayer ? miniVisible ? "Visible" : "Oculto" : "No cargado"}`;
-            miniButton.title = label;
-            miniButton.setAttribute("aria-label", label);
-            miniButton.setAttribute("aria-pressed", String(miniVisible));
-          }
+          [
+            [$("toggleMapKmz"), kmzLayer, visible],
+            [$("toggleMiniKmz"), miniKmzLayer, Boolean(miniKmzLayer && mini?.hasLayer(miniKmzLayer))],
+          ].forEach(([button, layer, isVisible]) => {
+            if (!button) return;
+            button.disabled = !layer;
+            const label = `KMZ: ${layer ? isVisible ? "Visible" : "Oculto" : "No cargado"}`;
+            button.title = label;
+            button.setAttribute("aria-label", label);
+            button.setAttribute("aria-pressed", String(isVisible));
+          });
         }
         function clearKmzLayer() {
           kmzLoadId++;
           releaseKmzLayer();
+          renderKmzFiles();
           updateKmzVisibilityControl();
           $("kmzFile").value = "";
-          $("removeKmz").disabled = true;
+          $("loadKmz").disabled = false;
           $("kmzStatus").textContent = "Ningún archivo KMZ cargado.";
         }
         function kmzFieldName(key) {
@@ -4594,11 +4668,8 @@
           }
           return content;
         }
-        async function loadKmzFile(file) {
-          const loadId = ++kmzLoadId;
+        async function loadKmzFile(file, loadId) {
           const objectUrls = [];
-          $("kmzFile").value = "";
-          $("removeKmz").disabled = false;
           try {
             if (!/\.kmz$/i.test(file.name))
               throw new Error("Seleccione un archivo con extensión .kmz.");
@@ -4606,7 +4677,6 @@
               throw new Error(
                 "No se pudieron cargar las herramientas KMZ. Conéctese a internet y vuelva a abrir la aplicación.",
               );
-            $("kmzStatus").textContent = `Cargando: ${file.name}…${kmzFilename ? ` Archivo actual: ${kmzFilename}.` : ""}`;
             const zip = await JSZip.loadAsync(await file.arrayBuffer()),
               files = Object.values(zip.files).filter((entry) => !entry.dir),
               kmlFiles = files.filter((entry) => /\.kml$/i.test(entry.name)),
@@ -4713,29 +4783,36 @@
               objectUrls.forEach((url) => URL.revokeObjectURL(url));
               return;
             }
+            const first = !kmzLayer,
+              mainGroup = kmzLayer || L.featureGroup(),
+              miniGroup = miniKmzLayer || L.featureGroup();
             try {
-              layer.addTo(map);
-              if (mini) miniLayer.addTo(mini);
+              mainGroup.addLayer(layer);
+              miniGroup.addLayer(miniLayer);
+              if (first) {
+                mainGroup.addTo(map);
+                if (mini) miniGroup.addTo(mini);
+              }
               map.fitBounds(layer.getBounds(), { padding: [25, 25], maxZoom: 18 });
             } catch (error) {
-              map.removeLayer(layer);
-              if (mini) mini.removeLayer(miniLayer);
+              mainGroup.removeLayer(layer);
+              miniGroup.removeLayer(miniLayer);
+              if (first) {
+                map.removeLayer(mainGroup);
+                if (mini) mini.removeLayer(miniGroup);
+              }
               throw error;
             }
-            releaseKmzLayer();
-            kmzLayer = layer;
-            miniKmzLayer = miniLayer;
-            kmzFilename = file.name;
-            kmzObjectUrls = objectUrls;
+            kmzLayer = mainGroup;
+            miniKmzLayer = miniGroup;
+            kmzFiles.push({ name: file.name, layer, miniLayer, objectUrls, unsupported });
+            renderKmzFiles();
             updateKmzVisibilityControl();
-            $("removeKmz").disabled = false;
-            $("kmzStatus").textContent = `Archivo cargado: ${file.name}${unsupported ? " · Algunos recursos, enlaces o archivos KML adicionales no son compatibles." : ""}`;
           } catch (error) {
             objectUrls.forEach((url) => URL.revokeObjectURL(url));
             if (loadId !== kmzLoadId) return;
             console.error("No se pudo cargar el archivo KMZ.", error);
-            $("removeKmz").disabled = !kmzLayer;
-            $("kmzStatus").textContent = `No se pudo cargar el KMZ: ${error.message}${kmzFilename ? ` Archivo actual: ${kmzFilename}.` : ""}`;
+            return `No se pudo cargar ${file.name}: ${error.message}`;
           }
         }
         $("loadKmz").onclick = () => $("kmzFile").click();
@@ -4745,11 +4822,22 @@
           else map.addLayer(kmzLayer);
           updateKmzVisibilityControl();
         }
-        $("toggleKmzSummary").onclick = toggleKmzVisibility;
-        $("removeKmz").onclick = clearKmzLayer;
-        $("kmzFile").addEventListener("change", (event) => {
-          const file = event.target.files?.[0];
-          if (file) loadKmzFile(file);
+        $("kmzFile").addEventListener("change", async (event) => {
+          const files = Array.from(event.target.files || []),
+            loadId = kmzLoadId,
+            errors = [];
+          event.target.value = "";
+          if (!files.length) return;
+          $("loadKmz").disabled = true;
+          for (const file of files) {
+            $("kmzStatus").textContent = `Cargando: ${file.name}…`;
+            const error = await loadKmzFile(file, loadId);
+            if (loadId !== kmzLoadId) return;
+            if (error) errors.push(error);
+          }
+          $("loadKmz").disabled = false;
+          if (errors.length) $("kmzStatus").textContent = errors.join(" · ");
+          else updateKmzStatus();
         });
         function nets(p) {
           return (
@@ -5130,8 +5218,7 @@
               }),
           );
         }
-        $("all").onclick = () => renderMap(true);
-        $("loc").onclick = () => {
+        function centerMapOnLocation() {
           if (!window.isSecureContext)
             return tell("La ubicación requiere HTTPS.", true);
           if (!navigator.geolocation)
@@ -5156,7 +5243,7 @@
               }).addTo(map);
             else userCircle.setLatLng(ll).setRadius(p.coords.accuracy);
             map.setView(ll, 18);
-          };
+          }
           if (lastKnownPosition) {
             const positionAge = Date.now() - lastKnownPosition.timestamp;
             if (
