@@ -243,6 +243,24 @@
         gap: 10px;
       }
 
+      .coordinate-section {
+        margin-top: 11px;
+      }
+
+      .coordinate-section > summary {
+        padding: 9px 10px;
+        border: 1px solid var(--bd);
+        border-radius: 8px;
+        background: #f8fafc;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .coordinate-section[open] > .grid {
+        margin-top: 10px;
+      }
+
       .locked {
         background: #e9ecef !important;
       }
@@ -1723,63 +1741,68 @@
                 <label>Numeración *</label
                 ><input id="numero" required placeholder="P-001" />
               </div>
-              <div class="full capture">
-                <button type="button" id="manual" class="secondary">
-                  Ingreso manual</button
-                ><button type="button" id="gps" class="blue">
-                  Tomar coordenada con GPS
-                </button>
-              </div>
-              <div id="secureNotice" class="full notice hidden"></div>
-              <div class="full">
-                <label>Tipo de coordenadas</label
-                ><select id="coordType">
-                  <option value="XY">X / Y</option>
-                  <option value="GEO">Longitud / Latitud</option>
-                </select>
-              </div>
-              <div class="full coords">
-                <div>
-                  <label id="l1">X / Este *</label
-                  ><input
-                    id="c1"
-                    type="number"
-                    step="any"
-                    placeholder="Ej.: 1173115.183"
-                    required
-                  />
+            </div>
+            <details id="coordinateSection" class="coordinate-section" open>
+              <summary>Coordenadas y mapa</summary>
+              <div class="grid">
+                <div class="full capture">
+                  <button type="button" id="manual" class="secondary">
+                    Ingreso manual</button
+                  ><button type="button" id="gps" class="blue">
+                    Tomar coordenada con GPS
+                  </button>
                 </div>
-                <div>
-                  <label id="l2">Y / Norte *</label
-                  ><input
-                    id="c2"
-                    type="number"
-                    step="any"
-                    placeholder="Ej.: 1365010.808"
-                    required
-                  />
+                <div id="secureNotice" class="full notice hidden"></div>
+                <div class="full">
+                  <label>Tipo de coordenadas</label
+                  ><select id="coordType">
+                    <option value="XY">X / Y</option>
+                    <option value="GEO">Longitud / Latitud</option>
+                  </select>
                 </div>
-              </div>
-              <div class="full gps-preview" id="gpsPreview">
-                <div id="gpsMiniMap"></div>
-                <div id="gpsText" class="helper"></div>
-                <div id="gpsQuality" class="gps-quality">GPS sin activar</div>
-                <div id="gpsAdjustActions" class="gps-adjust-actions">
-                  <button type="button" id="adjustGps" class="secondary" aria-label="Ajustar coordenada">
-                    <span class="gps-full-label">Ajustar coordenada</span><span class="gps-compact-label" aria-hidden="true">Ajustar</span></button
-                  ><button type="button" id="confirmGps" class="primary hidden" aria-label="Confirmar ubicación">
-                    <span class="gps-full-label">Confirmar ubicación</span><span class="gps-compact-label" aria-hidden="true">Confirmar</span></button
-                  ><button type="button" id="resumeGps" class="secondary">
-                    Reanudar GPS
+                <div class="full coords">
+                  <div>
+                    <label id="l1">X / Este *</label
+                    ><input
+                      id="c1"
+                      type="number"
+                      step="any"
+                      placeholder="Ej.: 1173115.183"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label id="l2">Y / Norte *</label
+                    ><input
+                      id="c2"
+                      type="number"
+                      step="any"
+                      placeholder="Ej.: 1365010.808"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="full gps-preview" id="gpsPreview">
+                  <div id="gpsMiniMap"></div>
+                  <div id="gpsText" class="helper"></div>
+                  <div id="gpsQuality" class="gps-quality">GPS sin activar</div>
+                  <div id="gpsAdjustActions" class="gps-adjust-actions">
+                    <button type="button" id="adjustGps" class="secondary" aria-label="Ajustar coordenada">
+                      <span class="gps-full-label">Ajustar coordenada</span><span class="gps-compact-label" aria-hidden="true">Ajustar</span></button
+                    ><button type="button" id="confirmGps" class="primary hidden" aria-label="Confirmar ubicación">
+                      <span class="gps-full-label">Confirmar ubicación</span><span class="gps-compact-label" aria-hidden="true">Confirmar</span></button
+                    ><button type="button" id="resumeGps" class="secondary">
+                      Reanudar GPS
+                    </button>
+                  </div>
+                </div>
+                <div class="full actions">
+                  <button type="button" id="stopGps" class="secondary hidden">
+                    Detener GPS
                   </button>
                 </div>
               </div>
-              <div class="full actions">
-                <button type="button" id="stopGps" class="secondary hidden">
-                  Detener GPS
-                </button>
-              </div>
-            </div>
+            </details>
             <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0" />
             <div
               style="
@@ -1966,7 +1989,7 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V2.0.0-A"
+      data-version="V2.0.1-A"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
@@ -2900,7 +2923,7 @@
             );
           setTimeout(() => {
             map?.invalidateSize();
-            mini?.invalidateSize();
+            invalidateMiniMap();
           }, 100);
           scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -3696,6 +3719,18 @@
           updateKmzVisibilityControl();
         }
 
+        function invalidateMiniMap() {
+          if (mini && $("coordinateSection").open &&
+              $("gpsPreview").classList.contains("active") &&
+              $("reg").classList.contains("active"))
+            mini.invalidateSize();
+        }
+
+        $("coordinateSection").addEventListener("toggle", () => {
+          if ($("coordinateSection").open)
+            requestAnimationFrame(invalidateMiniMap);
+        });
+
         function updateCoordinateFields(lat, lon) {
           const [first, second] =
             mode === "GEO"
@@ -3741,7 +3776,7 @@
             else accCircle.setLatLng(ll).setRadius(acc);
           }
           mini.setView(ll, 18);
-          setTimeout(() => mini.invalidateSize(), 50);
+          setTimeout(invalidateMiniMap, 50);
           updateGpsAdjustedText();
           if (acc !== null) updateGpsQuality(acc);
         }
@@ -3932,6 +3967,7 @@
         function clear() {
           stopGps();
           $("form").reset();
+          $("coordinateSection").open = true;
           $("elements").innerHTML = "";
           row();
           setMode("XY");
@@ -5266,6 +5302,7 @@
           const p = points[index];
           if (!p) return;
           stopGps();
+          $("coordinateSection").open = true;
           gpsManuallyAdjusted = false;
           gpsAdjusting = false;
           gpsUpdatesPaused = false;
@@ -5845,7 +5882,7 @@
             ? "Satélite en línea. Las zonas visualizadas se guardan progresivamente para uso sin conexión."
             : "Modo offline: se mostrarán las imágenes satelitales que ya hayan sido cargadas y guardadas en este dispositivo.";
           if (map) setTimeout(() => map.invalidateSize(), 100);
-          if (mini) setTimeout(() => mini.invalidateSize(), 100);
+          if (mini) setTimeout(invalidateMiniMap, 100);
         }
         window.addEventListener("online", updateConnection);
         window.addEventListener("offline", updateConnection);

@@ -14,6 +14,6 @@ CAPAS DEL MAPA: en Previsualización, use los botones KMZ y Replanteo en la esqu
 
 KMZ: cargue uno o varios archivos .kmz como referencias temporales. Pulse los elementos del mapa para consultar sus atributos; se omiten campos técnicos, vacíos y valores duplicados. Puede contraer el panel sin alterar las capas, mostrarlas u ocultarlas con el botón KMZ, y eliminar cada archivo desde su lista; se eliminan al cambiar o importar un levantamiento y no se guardan ni exportan. Se muestran geometrías KML e imágenes locales de superposiciones sin rotación; los enlaces de red y algunas superposiciones no son compatibles.
 
-MAPA DE REGISTRO: el KMZ cargado también aparece en el mapa de coordenadas. El botón KMZ de la esquina inferior izquierda permite mostrarlo u ocultarlo independientemente de Previsualización: azul indica visible y blanco, oculto. El botón de pantalla completa amplía el mapa y mantiene disponibles los controles de ajuste de coordenadas.
+MAPA DE REGISTRO: despliegue o contraiga «Coordenadas y mapa» para mostrar u ocultar los controles y el mapa; la sección se abre al iniciar un registro. El KMZ cargado también aparece en el mapa de coordenadas. El botón KMZ de la esquina inferior izquierda permite mostrarlo u ocultarlo independientemente de Previsualización: azul indica visible y blanco, oculto. El botón de pantalla completa amplía el mapa y mantiene disponibles los controles de ajuste de coordenadas.
 
 IMPORTANTE: abrir index.html como archivo local no activa correctamente el Service Worker. Use HTTPS para instalar la PWA.
