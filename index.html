@@ -649,6 +649,22 @@
         font-size: 12px;
       }
 
+      .kmz-file-visibility {
+        display: grid;
+        place-items: center;
+        color: #475569;
+      }
+
+      .kmz-file-visibility[aria-pressed="true"] {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .kmz-file-visibility svg {
+        width: 16px;
+        height: 16px;
+      }
+
       .kmz-leaflet-popup .leaflet-popup-content {
         min-width: min(240px, calc(100vw - 84px));
         max-width: min(390px, calc(100vw - 84px));
@@ -1989,7 +2005,7 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V2.0.1-A"
+      data-version="V2.0.2"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
@@ -3708,12 +3724,7 @@
           addMapLayerControls(mini, [{
             id: "toggleMiniKmz",
             text: "KMZ",
-            onClick: () => {
-              if (!miniKmzLayer) return;
-              if (mini.hasLayer(miniKmzLayer)) mini.removeLayer(miniKmzLayer);
-              else mini.addLayer(miniKmzLayer);
-              updateKmzVisibilityControl();
-            },
+            onClick: toggleKmzVisibility,
           }]);
           if (miniKmzLayer) miniKmzLayer.addTo(mini);
           updateKmzVisibilityControl();
@@ -4542,10 +4553,20 @@
           kmzFiles.forEach((file) => {
             const row = document.createElement("div"),
               info = document.createElement("span"),
+              visibilityButton = document.createElement("button"),
               button = document.createElement("button");
             row.className = "kmz-file-row";
             info.className = "helper";
             info.textContent = `Archivo cargado: ${file.name}${file.unsupported ? " · Algunos recursos, enlaces o archivos KML adicionales no son compatibles." : ""}`;
+            visibilityButton.type = "button";
+            visibilityButton.className = "secondary kmz-file-visibility";
+            visibilityButton.setAttribute("aria-label", `Visibilidad de KMZ: ${file.name}`);
+            file.visibilityButton = visibilityButton;
+            updateKmzFileVisibilityButton(file);
+            visibilityButton.onclick = () => {
+              setKmzFileVisibility(file, !file.visible);
+              updateKmzVisibilityControl();
+            };
             button.type = "button";
             button.className = "danger";
             button.textContent = "🗑";
@@ -4561,9 +4582,29 @@
               updateKmzVisibilityControl();
               if (!$("loadKmz").disabled) updateKmzStatus();
             };
-            row.append(info, button);
+            row.append(info, visibilityButton, button);
             list.appendChild(row);
           });
+        }
+        function updateKmzFileVisibilityButton(file) {
+          const button = file.visibilityButton;
+          button.setAttribute("aria-pressed", String(file.visible));
+          button.title = `${file.visible ? "Desactivar" : "Activar"} KMZ: ${file.name}`;
+          button.innerHTML = file.visible
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>';
+        }
+        function setKmzFileVisibility(file, visible) {
+          if (file.visible === visible) return;
+          if (visible) {
+            kmzLayer.addLayer(file.layer);
+            miniKmzLayer.addLayer(file.miniLayer);
+          } else {
+            kmzLayer.removeLayer(file.layer);
+            miniKmzLayer.removeLayer(file.miniLayer);
+          }
+          file.visible = visible;
+          updateKmzFileVisibilityButton(file);
         }
         function updateKmzStatus() {
           const count = kmzFiles.length,
@@ -4573,10 +4614,11 @@
             : "Ningún archivo KMZ cargado.";
         }
         function updateKmzVisibilityControl() {
-          const visible = Boolean(kmzLayer && map?.hasLayer(kmzLayer));
+          const anyVisible = kmzFiles.some((file) => file.visible),
+            visible = Boolean(anyVisible && kmzLayer && map?.hasLayer(kmzLayer));
           [
             [$("toggleMapKmz"), kmzLayer, visible],
-            [$("toggleMiniKmz"), miniKmzLayer, Boolean(miniKmzLayer && mini?.hasLayer(miniKmzLayer))],
+            [$("toggleMiniKmz"), miniKmzLayer, Boolean(anyVisible && miniKmzLayer && mini?.hasLayer(miniKmzLayer))],
           ].forEach(([button, layer, isVisible]) => {
             if (!button) return;
             button.disabled = !layer;
@@ -4841,7 +4883,7 @@
             }
             kmzLayer = mainGroup;
             miniKmzLayer = miniGroup;
-            kmzFiles.push({ name: file.name, layer, miniLayer, objectUrls, unsupported });
+            kmzFiles.push({ name: file.name, layer, miniLayer, objectUrls, unsupported, visible: true });
             renderKmzFiles();
             updateKmzVisibilityControl();
           } catch (error) {
@@ -4853,9 +4895,9 @@
         }
         $("loadKmz").onclick = () => $("kmzFile").click();
         function toggleKmzVisibility() {
-          if (!kmzLayer || !map) return;
-          if (map.hasLayer(kmzLayer)) map.removeLayer(kmzLayer);
-          else map.addLayer(kmzLayer);
+          if (!kmzFiles.length) return;
+          const visible = !kmzFiles.some((file) => file.visible);
+          kmzFiles.forEach((file) => setKmzFileVisibility(file, visible));
           updateKmzVisibilityControl();
         }
         $("kmzFile").addEventListener("change", async (event) => {
