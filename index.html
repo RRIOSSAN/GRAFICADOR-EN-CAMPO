@@ -301,6 +301,28 @@
         font-size: 20px;
       }
 
+      .mini-kmz-button {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 1px 5px #0003;
+        color: #1f2937;
+        font-size: 12px;
+      }
+
+      .mini-kmz-button[aria-pressed="true"] {
+        border-color: #1d4ed8;
+        background: #1d4ed8;
+        color: #fff;
+      }
+
+      .mini-kmz-button:disabled {
+        opacity: 0.7;
+        cursor: default;
+      }
+
       .map-type-menu {
         position: absolute;
         top: calc(100% + 6px);
@@ -1957,6 +1979,7 @@
           lines,
           surveyLayer,
           kmzLayer = null,
+          miniKmzLayer = null,
           kmzFilename = "",
           kmzObjectUrls = [],
           kmzLoadId = 0,
@@ -3627,6 +3650,25 @@
             18,
           );
           addMapTypeControl(mini);
+          const kmzControl = L.control({ position: "bottomleft" });
+          kmzControl.onAdd = () => {
+            const button = L.DomUtil.create("button", "mini-kmz-button");
+            button.type = "button";
+            button.id = "toggleMiniKmz";
+            button.textContent = "KMZ";
+            L.DomEvent.disableClickPropagation(button);
+            L.DomEvent.disableScrollPropagation(button);
+            L.DomEvent.on(button, "click", () => {
+              if (!miniKmzLayer) return;
+              if (mini.hasLayer(miniKmzLayer)) mini.removeLayer(miniKmzLayer);
+              else mini.addLayer(miniKmzLayer);
+              updateKmzVisibilityControl();
+            });
+            return button;
+          };
+          kmzControl.addTo(mini);
+          if (miniKmzLayer) miniKmzLayer.addTo(mini);
+          updateKmzVisibilityControl();
         }
 
         function updateCoordinateFields(lat, lon) {
@@ -4413,7 +4455,9 @@
         };
         function releaseKmzLayer() {
           if (kmzLayer && map) map.removeLayer(kmzLayer);
+          if (miniKmzLayer && mini) mini.removeLayer(miniKmzLayer);
           kmzLayer = null;
+          miniKmzLayer = null;
           kmzFilename = "";
           kmzObjectUrls.forEach((url) => URL.revokeObjectURL(url));
           kmzObjectUrls = [];
@@ -4423,6 +4467,15 @@
           $("toggleKmzSummary").disabled = !kmzLayer;
           $("toggleKmzSummary").textContent = `KMZ: ${kmzLayer ? visible ? "Visible" : "Oculto" : "No cargado"}`;
           $("toggleKmzSummary").setAttribute("aria-pressed", String(visible));
+          const miniButton = $("toggleMiniKmz");
+          if (miniButton) {
+            const miniVisible = Boolean(miniKmzLayer && mini.hasLayer(miniKmzLayer));
+            miniButton.disabled = !miniKmzLayer;
+            const label = `KMZ: ${miniKmzLayer ? miniVisible ? "Visible" : "Oculto" : "No cargado"}`;
+            miniButton.title = label;
+            miniButton.setAttribute("aria-label", label);
+            miniButton.setAttribute("aria-pressed", String(miniVisible));
+          }
         }
         function clearKmzLayer() {
           kmzLoadId++;
@@ -4593,7 +4646,7 @@
                 else unsupported = true;
               }
             }
-            const layer = L.geoJSON(geojson, {
+            const createLayer = () => L.geoJSON(geojson, {
               pointToLayer: (feature, latlng) =>
                 featureIcons.has(feature)
                   ? L.marker(latlng, {
@@ -4618,6 +4671,8 @@
                   maxWidth: 390,
                 }),
             });
+            const layer = createLayer(),
+              miniLayer = createLayer();
             const overlayFeatures = geojson.features.filter(
               (feature) => feature.properties?.["@geometry-type"] === "groundoverlay",
             );
@@ -4641,13 +4696,15 @@
                 unsupported = true;
                 continue;
               }
-              layer.addLayer(
-                L.imageOverlay(url, [[south, west], [north, east]], { interactive: true })
-                  .bindPopup(kmzPopup(overlayFeature?.properties), {
-                    className: "kmz-leaflet-popup",
-                    minWidth: 240,
-                    maxWidth: 390,
-                  }),
+              [layer, miniLayer].forEach((target) =>
+                target.addLayer(
+                  L.imageOverlay(url, [[south, west], [north, east]], { interactive: true })
+                    .bindPopup(kmzPopup(overlayFeature?.properties), {
+                      className: "kmz-leaflet-popup",
+                      minWidth: 240,
+                      maxWidth: 390,
+                    }),
+                ),
               );
             }
             if (!layer.getBounds().isValid())
@@ -4658,13 +4715,16 @@
             }
             try {
               layer.addTo(map);
+              if (mini) miniLayer.addTo(mini);
               map.fitBounds(layer.getBounds(), { padding: [25, 25], maxZoom: 18 });
             } catch (error) {
               map.removeLayer(layer);
+              if (mini) mini.removeLayer(miniLayer);
               throw error;
             }
             releaseKmzLayer();
             kmzLayer = layer;
+            miniKmzLayer = miniLayer;
             kmzFilename = file.name;
             kmzObjectUrls = objectUrls;
             updateKmzVisibilityControl();
