@@ -248,10 +248,7 @@
       }
 
       .element-row {
-        display: grid;
-        grid-template-columns: 145px 175px 1fr auto;
-        gap: 8px;
-        align-items: end;
+        display: block;
         margin: 9px 0;
       }
 
@@ -278,39 +275,203 @@
       }
 
       .map-type-control {
-        padding: 6px 8px;
+        position: relative;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .map-type-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .map-type-button {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        padding: 0;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.96);
         box-shadow: 0 1px 5px #0003;
-      }
-
-      .map-type-control label {
-        margin: 0 0 3px;
         color: #1f2937;
-        font-size: 11px;
+        font-size: 20px;
       }
 
-      .map-type-control select {
-        width: auto;
-        min-width: 116px;
-        padding: 5px 25px 5px 7px;
+      .map-type-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        min-width: 150px;
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 2px 8px #0003;
+      }
+
+      .map-type-menu label {
+        margin: 0 0 4px;
+        color: #1f2937;
+        font-size: 12px;
+      }
+
+      .map-type-menu select {
+        width: 100%;
+        min-width: 130px;
+        padding: 6px 24px 6px 7px;
         border-radius: 5px;
         font-size: 13px;
+      }
+
+      .leaflet-bottom .map-navigation-control {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 38px;
+      }
+
+      .map-navigation-button {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        padding: 0;
+        border: 1px solid #cbd5e1;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 1px 5px #0003;
+        color: #1f2937;
+        font-size: 21px;
+        line-height: 1;
+      }
+
+      .map-location-icon {
+        position: relative;
+        display: block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #4285f4;
+        border-radius: 50%;
+      }
+
+      .map-location-icon::before {
+        position: absolute;
+        inset: 4px;
+        border: 2px solid #4285f4;
+        border-radius: 50%;
+        content: "";
+      }
+
+      .map-location-icon::after {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #1a73e8;
+        content: "";
+        transform: translate(-50%, -50%);
+      }
+
+      body.map-fullscreen {
+        overflow: hidden;
+      }
+
+      body.map-fullscreen > :not(main) {
+        display: none !important;
+      }
+
+      body.map-fullscreen > main {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      body.map-fullscreen > main > .view:not(#prev) {
+        display: none !important;
+      }
+
+      body.map-fullscreen > main > #prev {
+        display: block !important;
+        margin: 0;
+        padding: 0;
+      }
+
+      body.map-fullscreen #prev > .card {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      body.map-fullscreen #prev > .card > :not(#map) {
+        display: none !important;
+      }
+
+      body.map-fullscreen #map {
+        position: fixed;
+        inset: 0;
+        z-index: 10001;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
       }
 
       .point {
         border: 1px solid var(--bd);
         border-left: 6px solid #777;
         border-radius: 9px;
-        padding: 10px;
-        margin: 8px 0;
+        padding: 8px;
+        margin: 5px 0;
       }
 
       .point-head {
         display: flex;
+        align-items: center;
         justify-content: space-between;
         gap: 8px;
+      }
+
+      summary.point-head {
+        list-style: none;
+        cursor: pointer;
+      }
+
+      summary.point-head::-webkit-details-marker {
+        display: none;
+      }
+
+      summary.point-head::before {
+        content: "▶";
+        flex: 0 0 auto;
+        color: #475569;
+        font-size: 11px;
+      }
+
+      .point[open] > summary.point-head::before {
+        content: "▼";
+      }
+
+      .point-summary-title {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .point-summary-location {
+        color: #5c6670;
+        font-size: 12px;
+        text-align: right;
       }
 
       .point-row {
@@ -372,6 +533,24 @@
         overflow-wrap: anywhere;
       }
 
+      .map-tool-section {
+        margin: 8px 0 0;
+        padding: 9px 10px;
+        border: 1px solid var(--bd);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .map-tool-section summary {
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .map-tool-section[open] > summary {
+        margin-bottom: 8px;
+      }
+
       .kmz-leaflet-popup .leaflet-popup-content {
         min-width: min(240px, calc(100vw - 84px));
         max-width: min(390px, calc(100vw - 84px));
@@ -390,9 +569,26 @@
       }
 
       .tramos {
+        margin: 10px 0 0;
+        padding: 10px 12px;
+        border: 1px solid var(--bd);
+        border-radius: 9px;
+        background: #f8fafc;
+      }
+
+      .tramos > summary {
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .tramos[open] > summary {
+        margin-bottom: 10px;
+      }
+
+      .tramos-content {
         border-top: 1px solid var(--bd);
-        margin-top: 14px;
-        padding-top: 14px;
+        padding-top: 10px;
       }
 
       .tramo-grid {
@@ -440,12 +636,42 @@
         border-radius: 8px;
         padding: 9px;
         margin-top: 7px;
+        background: #fff;
+      }
+
+      .tramo-row summary {
         display: flex;
-        justify-content: space-between;
+        align-items: center;
         gap: 8px;
+        list-style: none;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .tramo-row summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .tramo-row summary::before {
+        content: "▶";
+        flex: 0 0 auto;
+        color: #475569;
+        font-size: 11px;
+      }
+
+      .tramo-row[open] > summary::before {
+        content: "▼";
+      }
+
+      .tramo-networks {
+        display: block;
+        margin-top: 8px;
+        line-height: 1.5;
       }
 
       .tramo-row button {
+        width: 100%;
+        margin-top: 8px;
         padding: 6px 9px;
       }
 
@@ -474,16 +700,8 @@
           grid-template-columns: 1fr 1fr;
         }
 
-        .element-row {
-          grid-template-columns: 1fr;
-        }
-
         .tramo-grid {
           grid-template-columns: 1fr;
-        }
-
-        .tramo-row {
-          flex-direction: column;
         }
 
         .menu button {
@@ -498,6 +716,14 @@
         .actions button {
           min-width: 100%;
         }
+      }
+
+      .point-actions {
+        margin-top: 8px;
+      }
+
+      .point-actions button {
+        min-width: 0;
       }
 
       .point-number-label {
@@ -573,6 +799,60 @@
         flex: 0 0 auto;
       }
 
+      .points-tools {
+        margin: 0 0 8px;
+        padding: 9px 11px;
+        border: 1px solid var(--bd);
+        border-radius: 9px;
+        background: #f8fafc;
+      }
+
+      .points-tools summary {
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .points-tools[open] summary {
+        margin-bottom: 9px;
+      }
+
+      .points-tools-content > .project-box {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+
+      .project-actions-inline {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .project-actions-inline button {
+        min-width: 0;
+        width: 100%;
+      }
+
+      #pts .counter-bar {
+        justify-content: flex-start;
+        margin: 8px 0;
+        padding: 7px 10px;
+      }
+
+      #pts .counter-bar button {
+        width: auto;
+        padding: 6px 10px;
+      }
+
+      .active-project-points {
+        margin: 0 0 10px;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
       @media (max-width: 480px) {
         .counter-bar {
           align-items: stretch;
@@ -581,6 +861,11 @@
 
         .counter-bar button {
           width: 100%;
+        }
+
+        #pts .counter-bar {
+          align-items: center;
+          flex-direction: row;
         }
       }
 
@@ -674,11 +959,50 @@
       }
 
       .element-row {
-        grid-template-columns: 1fr !important;
-        padding: 10px;
         border: 1px solid var(--bd);
         border-radius: 10px;
         background: #fff;
+        overflow: hidden;
+      }
+      .element-row > summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        list-style: none;
+      }
+      .element-row > summary::-webkit-details-marker {
+        display: none;
+      }
+      .element-row > summary::before {
+        content: "▶";
+        flex: 0 0 auto;
+        color: #5c6670;
+        font-size: 11px;
+      }
+      .element-row[open] > summary::before {
+        content: "▼";
+      }
+      .element-row[open] > summary {
+        border-bottom: 1px solid var(--bd);
+      }
+      .element-summary-text {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .element-row .rm,
+      .element-required-tag {
+        flex: 0 0 auto;
+        min-width: auto !important;
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+      .element-content {
+        padding: 10px;
       }
       .element-fields {
         display: grid;
@@ -699,11 +1023,6 @@
         font-size: 11px;
         font-weight: 400;
       }
-      .element-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 7px;
-      }
       .specific-fields {
         display: contents;
       }
@@ -716,9 +1035,6 @@
           grid-template-columns: 1fr 1fr;
         }
         .element-fields .description-field {
-          grid-column: 1/-1;
-        }
-        .element-actions {
           grid-column: 1/-1;
         }
       }
@@ -742,11 +1058,6 @@
       }
       .gps-adjust-marker.manual {
         background: #fd7e14;
-      }
-      .element-row {
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
       }
       .element-fields {
         grid-template-columns: repeat(auto-fit, minmax(min(145px, 100%), 1fr));
@@ -1401,7 +1712,7 @@
                 align-items: center;
               "
             >
-              <h2>Elementos</h2>
+              <h2 id="elementsHeading">Elementos (0)</h2>
               <button type="button" id="add" class="secondary">
                 + Agregar
               </button>
@@ -1431,141 +1742,181 @@
       </section>
       <section id="prev" class="view">
         <div class="card">
-          <h2>Vista previa del mapa</h2>
-          <div class="toolbar">
-            <button id="all" class="secondary">Ver todos los puntos</button
-            ><button id="loc" class="primary">Centrar en mi ubicación</button>
-          </div>
-          <details class="kmz-reference">
-            <summary>Capas del mapa</summary>
-            <div class="layer-controls">
-              <button type="button" id="toggleSurveyLayer" class="secondary" aria-pressed="true">Replanteo: Visible</button>
-              <button type="button" id="toggleKmzSummary" class="secondary" disabled aria-pressed="false">KMZ: No cargado</button>
-            </div>
-            <div class="layer-controls kmz-controls">
-              <button type="button" id="loadKmz" class="primary">Cargar KMZ</button>
-              <button type="button" id="removeKmz" class="secondary" disabled>Quitar capa</button>
-            </div>
-            <input id="kmzFile" type="file" accept=".kmz" class="hidden" />
-            <p id="kmzStatus" class="helper" role="status" aria-live="polite">Ningún archivo KMZ cargado.</p>
+          <details class="kmz-reference map-tools">
+            <summary>Herramientas del mapa</summary>
+            <details class="map-tool-section">
+              <summary>Navegación</summary>
+              <div class="toolbar">
+                <button id="all" class="secondary">Ver todos los puntos</button
+                ><button id="loc" class="primary">Centrar en mi ubicación</button>
+              </div>
+            </details>
+            <details class="map-tool-section">
+              <summary>Capas del mapa</summary>
+              <div class="layer-controls">
+                <button
+                  type="button"
+                  id="toggleSurveyLayer"
+                  class="secondary"
+                  aria-pressed="true"
+                >
+                  Replanteo: Visible
+                </button>
+                <button
+                  type="button"
+                  id="toggleKmzSummary"
+                  class="secondary"
+                  disabled
+                  aria-pressed="false"
+                >
+                  KMZ: No cargado
+                </button>
+              </div>
+            </details>
+            <details class="map-tool-section">
+              <summary>Herramientas KMZ</summary>
+              <div class="layer-controls kmz-controls">
+                <button type="button" id="loadKmz" class="primary">
+                  Cargar KMZ
+                </button>
+                <button type="button" id="removeKmz" class="secondary" disabled>
+                  Quitar capa
+                </button>
+              </div>
+              <input id="kmzFile" type="file" accept=".kmz" class="hidden" />
+              <p
+                id="kmzStatus"
+                class="helper"
+                role="status"
+                aria-live="polite"
+              >
+                Ningún archivo KMZ cargado.
+              </p>
+            </details>
           </details>
           <div id="map"></div>
           <div id="mapMode" class="map-mode">
             Satélite en línea. Las zonas visualizadas se guardan progresivamente
             para uso sin conexión.
           </div>
-          <div class="tramos">
-            <h2>Tramos de red</h2>
-            <p class="helper">
-              Seleccione los apoyos y marque únicamente la red o las redes que
-              llegan al punto final.
-            </p>
-            <div class="tramo-grid">
-              <div>
-                <label>Punto inicial</label
-                ><select id="start"></select>
+          <details class="tramos">
+            <summary>
+              Tramos de red (<span id="tramoCount">0</span>)
+            </summary>
+            <div class="tramos-content">
+              <p class="helper">
+                Seleccione los apoyos y marque únicamente la red o las redes que
+                llegan al punto final.
+              </p>
+              <div class="tramo-grid">
+                <div>
+                  <label>Punto inicial</label
+                  ><select id="start"></select>
+                </div>
+                <div>
+                  <label>Punto final</label
+                  ><select id="end"></select>
+                </div>
               </div>
-              <div>
-                <label>Punto final</label
-                ><select id="end"></select>
+              <div id="networkInfo" class="network-info">
+                Seleccione un punto inicial.
               </div>
+              <div class="actions" style="margin-top: 9px">
+                <button id="saveTramo" class="primary">Guardar tramo</button>
+              </div>
+              <div id="tramoList"></div>
             </div>
-            <div id="networkInfo" class="network-info">
-              Seleccione un punto inicial.
-            </div>
-            <div class="actions" style="margin-top: 9px">
-              <button id="saveTramo" class="primary">Guardar tramo</button>
-            </div>
-            <div id="tramoList"></div>
-          </div>
+          </details>
         </div>
       </section>
       <section id="pts" class="view">
         <div class="card">
-          <h2>Puntos registrados</h2>
-          <div class="project-box">
-            <label for="projectSelect">Levantamientos guardados</label>
-            <select id="projectSelect"></select>
-            <div class="actions">
-              <button type="button" id="newProjectInline" class="primary">
-                + Nuevo levantamiento
-              </button>
-              <button type="button" id="renameProjectInline" class="secondary">
-                Renombrar levantamiento
-              </button>
-              <button type="button" id="duplicateProjectInline" class="secondary">
-                Duplicar levantamiento
-              </button>
-              <button type="button" id="deleteProjectInline" class="danger">
-                Eliminar levantamiento
-              </button>
-            </div>
-            <div id="projectNameEditorInline" class="hidden">
-              <label for="projectNameInputInline">Nombre del Levantamiento</label>
-              <input
-                id="projectNameInputInline"
-                type="text"
-                maxlength="80"
-                aria-describedby="projectNameHintInline"
-              />
-              <div id="projectNameHintInline" class="helper">
-                Presione Enter para guardar o Escape para cancelar.
+          <details class="points-tools">
+            <summary>Levantamientos</summary>
+            <div class="points-tools-content">
+              <div class="project-box">
+                <label for="projectSelect">Levantamientos guardados</label>
+                <select id="projectSelect"></select>
+                <div class="actions project-actions-inline">
+                  <button type="button" id="newProjectInline" class="primary">
+                    + Nuevo
+                  </button>
+                  <button type="button" id="renameProjectInline" class="secondary">
+                    Renombrar
+                  </button>
+                  <button type="button" id="duplicateProjectInline" class="secondary">
+                    Duplicar
+                  </button>
+                  <button type="button" id="deleteProjectInline" class="danger">
+                    Eliminar
+                  </button>
+                </div>
+                <div id="projectNameEditorInline" class="hidden">
+                  <label for="projectNameInputInline">Nombre del Levantamiento</label>
+                  <input
+                    id="projectNameInputInline"
+                    type="text"
+                    maxlength="80"
+                    aria-describedby="projectNameHintInline"
+                  />
+                  <div id="projectNameHintInline" class="helper">
+                    Presione Enter para guardar o Escape para cancelar.
+                  </div>
+                  <div class="actions">
+                    <button
+                      type="button"
+                      id="saveProjectNameInline"
+                      class="primary"
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      type="button"
+                      id="cancelProjectNameInline"
+                      class="secondary"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               </div>
+            </div>
+          </details>
+          <details class="points-tools">
+            <summary>Importar / Exportar</summary>
+            <div class="points-tools-content">
               <div class="actions">
-                <button
-                  type="button"
-                  id="saveProjectNameInline"
-                  class="primary"
-                >
-                  Guardar
+                <button id="dxf" class="dark">Exportar DXF</button
+                ><button id="csv" class="blue">Exportar CSV</button>
+                <button type="button" id="importDxf" class="secondary">
+                  Importar DXF
                 </button>
-                <button
-                  type="button"
-                  id="cancelProjectNameInline"
-                  class="secondary"
-                >
-                  Cancelar
-                </button>
+                <input
+                  type="file"
+                  id="dxfImportFile"
+                  accept=".dxf,application/dxf"
+                  class="hidden"
+                />
               </div>
             </div>
-          </div>
-          <div class="project-box">
-            <label for="projectName">Nombre del proyecto / archivo DXF *</label
-            ><input
-              id="projectName"
-              type="text"
-              maxlength="80"
-              placeholder="Ej.: LEVANTAMIENTO_CIRCUITO_CUCUTA"
-              required
-            />
-            <div class="helper">
-              El DXF se descargará con este nombre. El nombre queda guardado
-              junto con los puntos.
-            </div>
-          </div>
+          </details>
           <div class="counter-bar">
-            <div class="counter-value">
-              Total registrados: <span id="count">0</span>
-            </div>
-            <button type="button" id="resetAll" class="danger">
-              Limpiar nombre y puntos
+            <div class="counter-value">Registros: <span id="count">0</span></div>
+            <button
+              type="button"
+              id="resetAll"
+              class="danger"
+              aria-label="Limpiar nombre y puntos"
+            >
+              Limpiar
             </button>
           </div>
+          <div class="active-project-points" aria-live="polite">
+            Levantamiento: <span id="activeProjectPoints">Sin nombre</span>
+          </div>
+          <h2>Puntos registrados</h2>
           <div id="pointList"></div>
           <div id="ptsMsg" class="status"></div>
-          <div class="actions">
-            <button id="dxf" class="dark">Exportar DXF</button
-            ><button id="csv" class="blue">Exportar CSV</button>
-            <button type="button" id="importDxf" class="secondary">
-              Importar DXF
-            </button>
-            <input
-              type="file"
-              id="dxfImportFile"
-              accept=".dxf,application/dxf"
-              class="hidden"
-            />
-          </div>
         </div>
       </section>
     </main>
@@ -1573,7 +1924,7 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V1.0.3-A"
+      data-version="V2.0.0-A"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
@@ -1586,6 +1937,7 @@
         const $ = (x) => document.getElementById(x),
           projectsKey = "replanteo_projects",
           activeProjectKey = "replanteo_active_project";
+        const LOCATION_CACHE_MAX_AGE_MS = 30000;
         let points = [],
           tramos = [],
           projectName = "",
@@ -1600,7 +1952,6 @@
           mode = "XY",
           edit = -1,
           watch = null,
-          mapWatch = null,
           map,
           markers,
           lines,
@@ -1618,6 +1969,7 @@
           userCircle,
           lastGpsAccuracy = null,
           lastGpsTime = null,
+          lastKnownPosition = null,
           originalGpsLongitude = null,
           originalGpsLatitude = null,
           gpsManuallyAdjusted = false,
@@ -1733,10 +2085,11 @@
           pendingTransformerChoice = null;
           $("transformerChoiceModal").classList.add("hidden");
           create(selection);
-          (typeSelect.disabled
-            ? typeSelect.closest(".element-row").querySelector(".sp-ne")
-            : typeSelect
-          ).focus();
+          const rowElement = typeSelect.closest(".element-row"),
+            focusTarget = typeSelect.disabled
+              ? rowElement.querySelector(".sp-ne")
+              : typeSelect;
+          focusTarget.focus();
         }
         $("transformerChange").addEventListener("click", () =>
           chooseTransformer("Cambio"),
@@ -1784,6 +2137,7 @@
             }
           }
           pairedRows.forEach((elementRow) => elementRow.remove());
+          updateElementsHeading();
           if (point) {
             point.elements = point.elements.filter(
               (element) =>
@@ -1875,6 +2229,7 @@
             pairedRow = elements.lastElementChild,
             followingRow = rowElement.nextElementSibling;
           elements.insertBefore(pairedRow, followingRow);
+          openElementRow(pairedRow);
         }
         document.addEventListener("keydown", (event) => {
           if (
@@ -2125,6 +2480,12 @@
             );
           return migratedActive;
         }
+        function updateActiveProjectName() {
+          const activeName = projectName || "Sin nombre";
+          $("activeProjectIndicator").textContent =
+            `Proyecto activo: ${activeName}`;
+          $("activeProjectPoints").textContent = activeName;
+        }
         function loadProject(index) {
           clearKmzLayer();
           activeProjectIndex = index;
@@ -2132,9 +2493,7 @@
           points = current.points || [];
           tramos = current.tramos || [];
           projectName = String(current.name || "");
-          $("projectName").value = projectName;
-          $("activeProjectIndicator").textContent =
-            `Proyecto activo: ${projectName || "Sin nombre"}`;
+          updateActiveProjectName();
         }
         function load() {
           const stableProjects = localStorage.getItem(projectsKey);
@@ -2161,14 +2520,13 @@
         }
         function persist() {
           ensureNetworkIds();
-          projectName = $("projectName").value.trim();
+          projectName = projectName.trim();
           projects[activeProjectIndex] = {
             name: projectName,
             points,
             tramos,
           };
-          $("activeProjectIndicator").textContent =
-            `Proyecto activo: ${projectName || "Sin nombre"}`;
+          updateActiveProjectName();
           localStorage.setItem(projectsKey, JSON.stringify(projects));
           localStorage.setItem(
             activeProjectKey,
@@ -2217,7 +2575,6 @@
           projects[index].name = name;
           if (index === activeProjectIndex) {
             projectName = name;
-            $("projectName").value = name;
           }
           persist();
           return true;
@@ -2444,10 +2801,10 @@
           deleteSelectedProject("projectSelect"),
         );
         function validProjectName() {
-          const n = $("projectName").value.trim();
+          const n = projectName.trim();
           if (!n) {
             tell(
-              "Ingrese el nombre obligatorio del proyecto / archivo DXF.",
+              "Asigne un nombre al Levantamiento activo antes de exportar.",
               true,
               "ptsMsg",
             );
@@ -2467,7 +2824,6 @@
             n
               .trim()
               .replace(/[\/:*?"<>|]+/g, "_")
-              .replace(/\s+/g, "_")
               .replace(/^\.+|\.+$/g, "")
               .slice(0, 80) || "replanteo"
           );
@@ -2491,10 +2847,6 @@
           if (p.mode === "XY") return [+p.c1, +p.c2];
           return proj4("EPSG:4326", "EPSG:3116", [+p.c1, +p.c2]);
         }
-        $("projectName").addEventListener("input", () => {
-          projectName = $("projectName").value.trim();
-          persist();
-        });
         function openView(id) {
           document
             .querySelectorAll(".view")
@@ -2954,6 +3306,39 @@
             };
         }
 
+        function updateElementRowSummary(rowElement) {
+          const type = rowElement.querySelector(".tp").value,
+            summary = rowElement.querySelector(".element-summary-text");
+          summary.textContent = type
+            ? elementSummary({
+                type,
+                status: rowElement.querySelector(".st")?.value || "Existente",
+                text: rowElement.querySelector(".tx").value.trim(),
+                details: readElementDetails(rowElement, type),
+              })
+            : "Seleccione un elemento";
+        }
+
+        function updateElementsHeading() {
+          $("elementsHeading").textContent =
+            `Elementos (${$("elements").children.length})`;
+        }
+
+        function openElementRow(rowElement) {
+          if (!rowElement) return;
+          const pairedChange =
+            rowElement._pairId && rowElement._pairReason === "Cambio";
+          $("elements")
+            .querySelectorAll(".element-row")
+            .forEach((otherRow) => {
+              const sameChange =
+                pairedChange &&
+                otherRow._pairId === rowElement._pairId &&
+                otherRow._pairReason === "Cambio";
+              otherRow.open = otherRow === rowElement || Boolean(sameChange);
+            });
+        }
+
         function paintElementRow(rowElement) {
           const type = rowElement.querySelector(".tp").value;
           let status = rowElement.querySelector(".st")?.value || "Existente";
@@ -2968,6 +3353,7 @@
                 : "Existente";
           }
           rowElement.querySelector(".tx").style.color = color(status);
+          updateElementRowSummary(rowElement);
         }
 
         function row(
@@ -2979,7 +3365,7 @@
           networkId = "",
         ) {
           const isFirst = first ?? !$("elements").children.length;
-          const rowElement = document.createElement("div");
+          const rowElement = document.createElement("details");
           const list = isFirst ? supports : options;
           const selected = list.includes(type) ? type : "";
           rowElement.className = "element-row";
@@ -2992,12 +3378,12 @@
           const conditions = isFirst
             ? ["Existente", "Nuevo", "Reposicion"]
             : ["Nuevo", "Reposicion"];
-          rowElement.innerHTML = `<div class="element-fields">
+          rowElement.innerHTML = `<summary class="element-summary"><span class="element-summary-text"></span>${isFirst ? '<button type="button" class="secondary element-required-tag" disabled>Obligatorio</button>' : '<button type="button" class="danger rm" aria-label="Eliminar elemento">🗑</button>'}</summary><div class="element-content"><div class="element-fields">
                     ${field(isFirst ? "Apoyo obligatorio" : "Elemento", `<select class="tp">${selectOptionsWithBlank(list, selected, isFirst ? "Seleccione apoyo..." : "Seleccione elemento...")}</select>`, true)}
                     <div class="specific-fields"></div>
                     <div class="general-condition">${selectField("st", "Condición", conditions, status, true)}</div>
                     <div class="description-field">${descriptionField(text)}</div>
-                </div><div class="element-actions">${isFirst ? '<button type="button" disabled>Obligatorio</button>' : '<button type="button" class="danger rm">Eliminar</button>'}</div>`;
+                </div></div>`;
           if (rowElement._pairId)
             rowElement.querySelector(".tp").disabled = true;
           const descriptionInput = rowElement.querySelector(".tx");
@@ -3007,11 +3393,36 @@
           descriptionInput.addEventListener("input", () => {
             descriptionCounter.textContent = `${descriptionInput.value.length} / 50`;
           });
+          rowElement.addEventListener("input", () =>
+            updateElementRowSummary(rowElement),
+          );
+          rowElement.addEventListener("change", () =>
+            updateElementRowSummary(rowElement),
+          );
+          rowElement.querySelector("summary").addEventListener("click", (event) => {
+            if (!rowElement.open) {
+              event.preventDefault();
+              openElementRow(rowElement);
+            } else if (rowElement._pairId && rowElement._pairReason === "Cambio") {
+              event.preventDefault();
+              $("elements")
+                .querySelectorAll(".element-row")
+                .forEach((otherRow) => {
+                  if (
+                    otherRow._pairId === rowElement._pairId &&
+                    otherRow._pairReason === "Cambio"
+                  )
+                    otherRow.open = false;
+                });
+            }
+          });
           rowElement.querySelector(".st").onchange = () =>
             paintElementRow(rowElement);
-          rowElement
-            .querySelector(".rm")
-            ?.addEventListener("click", () => {
+          rowElement.querySelector(".rm")?.addEventListener(
+            "click",
+            (event) => {
+              event.preventDefault();
+              event.stopPropagation();
               if (rowElement._pairId) {
                 pendingTransformerPairDelete = rowElement._pairId;
                 $("deleteTransformerPairConfirmation").classList.remove(
@@ -3020,13 +3431,19 @@
                 return;
               }
               rowElement.remove();
-            });
+              updateElementsHeading();
+            },
+          );
           $("elements").appendChild(rowElement);
+          if (isFirst) rowElement.open = true;
+          updateElementsHeading();
           bindSpecificFields(rowElement);
+          updateElementRowSummary(rowElement);
         }
         function addElementRow() {
           row();
           const newRow = $("elements").lastElementChild;
+          if (newRow) openElementRow(newRow);
           newRow?.scrollIntoView({ behavior: "smooth", block: "center" });
           newRow?.querySelector(".tp")?.focus();
         }
@@ -3055,6 +3472,41 @@
             select.value = type;
           });
         }
+
+        function setMapFullscreen(enabled) {
+          if (!map) return;
+          const center = map.getCenter(),
+            zoom = map.getZoom();
+          document.body.classList.toggle("map-fullscreen", enabled);
+          const button = map
+            .getContainer()
+            .querySelector(".map-fullscreen-button");
+          if (button) {
+            button.textContent = enabled ? "✕" : "⛶";
+            button.setAttribute(
+              "aria-label",
+              enabled
+                ? "Salir de pantalla completa"
+                : "Expandir el mapa a pantalla completa",
+            );
+            button.title = enabled
+              ? "Salir de pantalla completa"
+              : "Pantalla completa";
+            button.setAttribute("aria-pressed", String(enabled));
+          }
+          requestAnimationFrame(() => {
+            map.invalidateSize({ pan: false });
+            map.setView(center, zoom, { animate: false });
+          });
+        }
+
+        document.addEventListener("keydown", (event) => {
+          if (
+            event.key === "Escape" &&
+            document.body.classList.contains("map-fullscreen")
+          )
+            setMapFullscreen(false);
+        });
 
         function addMapTypeControl(mapInstance) {
           const satelliteLayer = L.tileLayer(
@@ -3089,10 +3541,51 @@
           mapTypeControl.onAdd = () => {
             const container = L.DomUtil.create(
               "div",
-              "leaflet-bar map-type-control",
+              "map-type-control",
             );
-            const label = L.DomUtil.create("label", "", container);
-            const select = L.DomUtil.create("select", "", container);
+            const actions = L.DomUtil.create(
+                "div",
+                "map-type-actions",
+                container,
+              ),
+              mapTypeButton = L.DomUtil.create(
+                "button",
+                "map-type-button",
+                actions,
+              ),
+              isMainMap = mapInstance.getContainer().id === "map";
+            mapTypeButton.type = "button";
+            mapTypeButton.textContent = "🗺️";
+            mapTypeButton.title = "Tipo de mapa";
+            mapTypeButton.setAttribute("aria-label", "Seleccionar tipo de mapa");
+            mapTypeButton.setAttribute("aria-expanded", "false");
+            if (isMainMap) {
+              const fullscreenButton = L.DomUtil.create(
+                "button",
+                "map-type-button map-fullscreen-button",
+                actions,
+              );
+              fullscreenButton.type = "button";
+              fullscreenButton.textContent = "⛶";
+              fullscreenButton.title = "Pantalla completa";
+              fullscreenButton.setAttribute(
+                "aria-label",
+                "Expandir el mapa a pantalla completa",
+              );
+              fullscreenButton.setAttribute("aria-pressed", "false");
+              L.DomEvent.on(fullscreenButton, "click", () =>
+                setMapFullscreen(
+                  !document.body.classList.contains("map-fullscreen"),
+                ),
+              );
+            }
+            const menu = L.DomUtil.create(
+                "div",
+                "map-type-menu hidden",
+                container,
+              ),
+              label = L.DomUtil.create("label", "", menu),
+              select = L.DomUtil.create("select", "", menu);
             select.id = `mapTypeSelect${mapLayers.length}`;
             label.htmlFor = select.id;
             label.textContent = "Tipo de mapa";
@@ -3107,7 +3600,16 @@
             });
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
-            L.DomEvent.on(select, "change", () => setMapType(select.value));
+            L.DomEvent.on(mapTypeButton, "click", () => {
+              const open = menu.classList.contains("hidden");
+              menu.classList.toggle("hidden", !open);
+              mapTypeButton.setAttribute("aria-expanded", String(open));
+            });
+            L.DomEvent.on(select, "change", () => {
+              setMapType(select.value);
+              menu.classList.add("hidden");
+              mapTypeButton.setAttribute("aria-expanded", "false");
+            });
             return container;
           };
           mapTypeControl.addTo(mapInstance);
@@ -3285,6 +3787,7 @@
                 gpsUpdatesPaused
               )
                 return;
+              lastKnownPosition = position;
               const longitude = position.coords.longitude;
               const latitude = position.coords.latitude;
               updateCoordinateFields(latitude, longitude);
@@ -3568,6 +4071,7 @@
             .querySelectorAll(".field-invalid")
             .forEach((field) => field.classList.remove("field-invalid"));
           if (emptySelect) {
+            openElementRow(emptySelect.closest(".element-row"));
             const fieldContainer = emptySelect.closest("div");
             const fieldLabel = fieldContainer
               ?.querySelector(":scope > label")
@@ -3593,6 +4097,7 @@
             return !conditionSelect?.value;
           });
           if (missingCondition) {
+            openElementRow(missingCondition);
             const type = missingCondition.querySelector(".tp")?.value;
             const conditionSelect =
               type === "Transformador"
@@ -3607,27 +4112,36 @@
           const els = elementRows.map(readElementRow);
           if (els.some((element) => !element.type))
             return tell("Seleccione el elemento en todas las filas.", true);
-          if (!hasValidTransformerPairs(els))
+          if (!hasValidTransformerPairs(els)) {
+            const pairedTransformer = elementRows.find(
+              (rowElement) => rowElement._pairId,
+            );
+            if (pairedTransformer) openElementRow(pairedTransformer);
             return tell(
               "La pareja de transformadores está incompleta o tiene condiciones incompatibles.",
               true,
             );
-          if (
-            els.some(
-              (element) => element.type === "Poste" && !element.details.poste,
-            )
-          )
+          }
+          const invalidPostIndex = els.findIndex(
+            (element) =>
+              element.type === "Poste" && !element.details.poste,
+          );
+          if (invalidPostIndex >= 0) {
+            openElementRow(elementRows[invalidPostIndex]);
             return tell("Seleccione el poste típico.", true);
-          const invalidTrafo = els.find(
+          }
+          const invalidTrafoIndex = els.findIndex(
             (element) =>
               element.type === "Transformador" &&
               (!element.details.ne || !element.details.serial),
           );
-          if (invalidTrafo)
+          if (invalidTrafoIndex >= 0) {
+            openElementRow(elementRows[invalidTrafoIndex]);
             return tell(
               "N.E. y Serial son obligatorios para el transformador.",
               true,
             );
+          }
           if (!els[0]?.type)
             return tell("Seleccione el apoyo obligatorio.", true);
           if (!supports.includes(els[0]?.type))
@@ -3839,6 +4353,46 @@
           map.createPane("labelsPane");
           map.getPane("labelsPane").classList.add("leaflet-labels-pane");
           addMapTypeControl(map);
+          const mapNavigationControl = L.control({
+            position: "bottomright",
+          });
+          mapNavigationControl.onAdd = () => {
+            const container = L.DomUtil.create(
+                "div",
+                "map-navigation-control",
+              ),
+              locationButton = L.DomUtil.create(
+                "button",
+                "map-navigation-button map-location-button",
+                container,
+              ),
+              allPointsButton = L.DomUtil.create(
+                "button",
+                "map-navigation-button",
+                container,
+              );
+            locationButton.type = "button";
+            L.DomUtil.create(
+              "span",
+              "map-location-icon",
+              locationButton,
+            ).setAttribute("aria-hidden", "true");
+            locationButton.title = "Centrar en mi ubicación";
+            locationButton.setAttribute(
+              "aria-label",
+              "Centrar en mi ubicación",
+            );
+            locationButton.onclick = $("loc").onclick;
+            allPointsButton.type = "button";
+            allPointsButton.textContent = "🔎";
+            allPointsButton.title = "Ver todos los puntos";
+            allPointsButton.setAttribute("aria-label", "Ver todos los puntos");
+            allPointsButton.onclick = $("all").onclick;
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+            return container;
+          };
+          mapNavigationControl.addTo(map);
           map.on("popupopen", (event) => {
             const button =
               event.popup.getElement()?.querySelector(".edit-preview");
@@ -4485,14 +5039,28 @@
         }
         $("saveTramo").onclick = saveTramo;
         function tramoList() {
+          $("tramoCount").textContent = String(tramos.length);
           $("tramoList").innerHTML = tramos.length
             ? tramos
-                .map(
-                  (tramo, index) =>
-                    `<div class="tramo-row"><div><b>${esc(tramo.start)} → ${esc(tramo.end)}</b><br><small>${tramo.networks.map((network) => `${esc(network.name || networkDisplayName(network))}${formatLength(network.length) ? ` · L: ${formatLength(network.length)} m` : ""}`).join("<br>")}</small></div><button class="danger delT" data-i="${index}">Eliminar</button></div>`,
-                )
+                .map((tramo, index) => {
+                  const networkCount = tramo.networks.length,
+                    networkLabel = networkCount === 1 ? "red" : "redes";
+                  return `<details class="tramo-row"><summary>${esc(tramo.start)} → ${esc(tramo.end)} (${networkCount} ${networkLabel})</summary><small class="tramo-networks">${tramo.networks.map((network) => `${esc(network.name || networkDisplayName(network))}${formatLength(network.length) ? ` · L: ${formatLength(network.length)} m` : ""}`).join("<br>")}</small><button class="danger delT" data-i="${index}">Eliminar</button></details>`;
+                })
                 .join("")
             : '<div class="helper">No hay tramos.</div>';
+          const tramoDetails = Array.from(
+            $("tramoList").querySelectorAll(".tramo-row"),
+          );
+          tramoDetails.forEach((detail) => {
+            detail.querySelector("summary").addEventListener("click", () => {
+              if (!detail.open) {
+                tramoDetails.forEach((other) => {
+                  if (other !== detail) other.open = false;
+                });
+              }
+            });
+          });
           document.querySelectorAll(".delT").forEach(
             (button) =>
               (button.onclick = () => {
@@ -4506,36 +5074,45 @@
         $("loc").onclick = () => {
           if (!window.isSecureContext)
             return tell("La ubicación requiere HTTPS.", true);
-          if (mapWatch !== null) {
-            navigator.geolocation.clearWatch(mapWatch);
-            mapWatch = null;
-            $("loc").textContent = "Centrar en mi ubicación";
-            return;
+          if (!navigator.geolocation)
+            return tell("GPS no disponible.", true);
+          const centerOnPosition = (p) => {
+            lastKnownPosition = p;
+            const ll = [p.coords.latitude, p.coords.longitude];
+            if (!userMarker)
+              userMarker = L.circleMarker(ll, {
+                pane: "pointsPane",
+                radius: 9,
+                color: "#fff",
+                fillColor: "#0d6efd",
+                fillOpacity: 1,
+              }).addTo(map);
+            else userMarker.setLatLng(ll);
+            if (!userCircle)
+              userCircle = L.circle(ll, {
+                radius: p.coords.accuracy,
+                color: "#0d6efd",
+                fillOpacity: 0.1,
+              }).addTo(map);
+            else userCircle.setLatLng(ll).setRadius(p.coords.accuracy);
+            map.setView(ll, 18);
+          };
+          if (lastKnownPosition) {
+            const positionAge = Date.now() - lastKnownPosition.timestamp;
+            if (
+              Number.isFinite(positionAge) &&
+              positionAge >= 0 &&
+              positionAge <= LOCATION_CACHE_MAX_AGE_MS
+            )
+              return centerOnPosition(lastKnownPosition);
           }
-          $("loc").textContent = "Detener ubicación en tiempo real";
-          mapWatch = navigator.geolocation.watchPosition(
-            (p) => {
-              const ll = [p.coords.latitude, p.coords.longitude];
-              if (!userMarker)
-                userMarker = L.circleMarker(ll, {
-                  pane: "pointsPane",
-                  radius: 9,
-                  color: "#fff",
-                  fillColor: "#0d6efd",
-                  fillOpacity: 1,
-                }).addTo(map);
-              else userMarker.setLatLng(ll);
-              if (!userCircle)
-                userCircle = L.circle(ll, {
-                  radius: p.coords.accuracy,
-                  color: "#0d6efd",
-                  fillOpacity: 0.1,
-                }).addTo(map);
-              else userCircle.setLatLng(ll).setRadius(p.coords.accuracy);
-              map.setView(ll, 18);
-            },
+          navigator.geolocation.getCurrentPosition(
+            centerOnPosition,
             () => tell("No fue posible obtener la ubicación.", true),
-            { enableHighAccuracy: true },
+            {
+              enableHighAccuracy: true,
+              maximumAge: LOCATION_CACHE_MAX_AGE_MS,
+            },
           );
         };
         function editPointAt(index) {
@@ -4585,12 +5162,27 @@
           $("countInicio").textContent = String(points.length);
           $("pointList").innerHTML = points.length
             ? points
-                .map(
-                  (p, i) =>
-                    `<div class="point"><div class="point-head"><b>${esc(p.number)}</b><span>${p.mode}${hasGpsAccuracy(p) ? " · GPS ±" + Math.round(Number(p.accuracy)) + " m" : ""}</span></div><div class="point-row">${p.elements.map((e) => `• <span style="color:${color(elementColorStatus(e))}">${esc(elementSummary(e))}</span>`).join("<br>")}</div><div class="actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></div>`,
-                )
+                .map((p, i) => {
+                  const elementCount = p.elements.length,
+                    elementLabel =
+                      elementCount === 1 ? "elemento" : "elementos",
+                    locationSummary = ` · ${p.mode}${hasGpsAccuracy(p) ? " · GPS ±" + Math.round(Number(p.accuracy)) + " m" : ""}`;
+                  return `<details class="point"><summary class="point-head"><span class="point-summary-title"><b>${esc(p.number)}</b> · ${elementCount} ${elementLabel}</span><span class="point-summary-location">${locationSummary}</span></summary><div class="point-row">${p.elements.map((e) => `• <span style="color:${color(elementColorStatus(e))}">${esc(elementSummary(e))}</span>`).join("<br>")}</div><div class="actions point-actions"><button class="secondary edit" data-i="${i}">Editar</button><button class="danger del" data-i="${i}">Eliminar</button></div></details>`;
+                })
                 .join("")
             : '<div class="helper">No hay puntos.</div>';
+          const pointDetails = Array.from(
+            $("pointList").querySelectorAll(".point"),
+          );
+          pointDetails.forEach((detail) => {
+            detail.querySelector("summary").addEventListener("click", () => {
+              if (!detail.open) {
+                pointDetails.forEach((other) => {
+                  if (other !== detail) other.open = false;
+                });
+              }
+            });
+          });
           document.querySelectorAll(".edit").forEach(
             (button) =>
               (button.onclick = () => editPointAt(Number(button.dataset.i))),
@@ -4902,7 +5494,6 @@
             points = imported.points;
             tramos = imported.tramos;
             projectName = imported.name.trim();
-            $("projectName").value = projectName;
           } else {
             const existingNames = new Set(
               points.map((point) => String(point.number).trim()),
@@ -4954,7 +5545,7 @@
         }
         $("newDxfImport").onclick = createProjectFromDxfImport;
         function exportDxfFile() {
-          const exportName = safeFileName($("projectName").value);
+          const exportName = safeFileName(projectName);
           let d =
             "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n2\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nLTYPE\n2\nDASHED\n70\n0\n3\nDashed line\n72\n65\n73\n2\n40\n4.0\n49\n1.0\n74\n0\n49\n-3.0\n74\n0\n0\nENDTAB\n0\nTABLE\n2\nLAYER\n70\n4\n";
           [
@@ -5039,7 +5630,7 @@
         $("csv").onclick = () => {
           if (!validProjectName()) return;
 
-          const exportName = safeFileName($("projectName").value);
+          const exportName = safeFileName(projectName);
 
           const encabezado =
             "Numero;X;Y;Precision_GPS_m;Fecha_hora_GPS;Orden_item;Estado;Tipo_elemento;Descripcion\r\n";
@@ -5090,7 +5681,6 @@
             points = [];
             tramos = [];
             projectName = "";
-            $("projectName").value = "";
             persist();
             clear();
             render();
