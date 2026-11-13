@@ -793,6 +793,15 @@
         margin: 9px 11px;
       }
 
+      .point-popup-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        margin-right: 5px;
+        border-radius: 50%;
+        vertical-align: middle;
+      }
+
       .notice {
         padding: 9px;
         background: #fff3cd;
@@ -2370,14 +2379,14 @@
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
-        const color = (s) =>
+        const color = (s, popup = false) =>
           normalizeStatus(s) === "nuevo"
-            ? "#00c853"
+            ? popup ? "#008000" : "#00c853"
             : normalizeStatus(s) === "reposicion"
-              ? "#ff1744"
+              ? popup ? "#FF0000" : "#ff1744"
               : normalizeStatus(s) === "geo"
-                ? "#fd7e14"
-                : "#212529";
+                ? popup ? "#FF8C00" : "#fd7e14"
+                : popup ? "#000000" : "#212529";
         const cadColor = (s) =>
           normalizeStatus(s) === "nuevo"
             ? 3
@@ -5038,7 +5047,7 @@
                 pane: "labelsPane",
               })
               .bindPopup(
-                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((e) => `${esc(elementSummary(e))}`).join("<br>")}<br><button type="button" class="secondary edit-preview" data-i="${index}">Editar</button>`,
+                `<b>Punto ${esc(p.number)}</b><br>${p.elements.map((e) => `<span class="point-popup-dot" style="background-color:${color(elementColorStatus(e), true)}" aria-hidden="true"></span>${esc(elementSummary(e))}`).join("<br>")}<br><button type="button" class="secondary edit-preview" data-i="${index}">Editar</button>`,
               );
             bounds.push(ll);
           });

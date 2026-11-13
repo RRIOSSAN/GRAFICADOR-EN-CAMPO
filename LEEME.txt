@@ -12,7 +12,7 @@ TRANSFORMADORES: al agregar un transformador, seleccione Cambio para crear los r
 
 CONDICIÓN GEO: disponible para los elementos distintos de Transformador; se representa en naranja.
 
-CAPAS DEL MAPA: en Previsualización, use los botones KMZ y Replanteo en la esquina inferior izquierda del mapa para mostrar u ocultar cada capa independientemente. Azul indica visible y blanco, oculto.
+CAPAS DEL MAPA: en Previsualización, use los botones KMZ y Replanteo en la esquina inferior izquierda del mapa para mostrar u ocultar cada capa independientemente. Azul indica visible y blanco, oculto. Al abrir un punto, los círculos de colores indican la condición de sus elementos.
 
 KMZ: cargue uno o varios archivos .kmz como referencias temporales. Pulse los elementos del mapa para consultar sus atributos; se omiten campos técnicos, vacíos y valores duplicados. En la lista puede activar o desactivar cada archivo para ambos mapas y eliminarlo. El botón KMZ de cualquiera de los mapas activa o desactiva todos los archivos; después puede volver a activar uno desde la lista. Se eliminan al cambiar o importar un levantamiento y no se guardan ni exportan. Se muestran geometrías KML e imágenes locales de superposiciones sin rotación; los enlaces de red y algunas superposiciones no son compatibles.
 
