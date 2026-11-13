@@ -2005,7 +2005,7 @@
     <div
       id="appVersion"
       class="version-app"
-      data-version="V2.0.2"
+      data-version="V2.0.3"
     ></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
@@ -2375,19 +2375,25 @@
             ? "#00c853"
             : normalizeStatus(s) === "reposicion"
               ? "#ff1744"
-              : "#212529";
+              : normalizeStatus(s) === "geo"
+                ? "#fd7e14"
+                : "#212529";
         const cadColor = (s) =>
           normalizeStatus(s) === "nuevo"
             ? 3
             : normalizeStatus(s) === "reposicion"
               ? 1
-              : 7;
+              : normalizeStatus(s) === "geo"
+                ? 30
+                : 7;
         const statusLayer = (s) =>
           normalizeStatus(s) === "nuevo"
             ? "NUEVO"
             : normalizeStatus(s) === "reposicion"
               ? "REPOSICION"
-              : "INTERVENIDO";
+              : normalizeStatus(s) === "geo"
+                ? "GEO"
+                : "INTERVENIDO";
         function tell(t, e = false, id = "msg") {
           const el = $(id);
           el.textContent = t;
@@ -3068,7 +3074,7 @@
         function conditionOptions(selected = "Existente") {
           const value = selected === "Intervenido" ? "Existente" : selected;
           return selectOptions(
-            ["Existente", "Nuevo", "Reposicion"],
+            ["Existente", "Nuevo", "Reposicion", "GEO"],
             value,
           ).replace(">Reposicion<", ">Reposición<");
         }
@@ -3457,8 +3463,8 @@
           rowElement._pairReason = details.pairReason || "";
           rowElement._conditionLocked = Boolean(details.conditionLocked);
           const conditions = isFirst
-            ? ["Existente", "Nuevo", "Reposicion"]
-            : ["Nuevo", "Reposicion"];
+            ? ["Existente", "Nuevo", "Reposicion", "GEO"]
+            : ["Nuevo", "Reposicion", "GEO"];
           rowElement.innerHTML = `<summary class="element-summary"><span class="element-summary-text"></span>${isFirst ? '<button type="button" class="secondary element-required-tag" disabled>Obligatorio</button>' : '<button type="button" class="danger rm" aria-label="Eliminar elemento">🗑</button>'}</summary><div class="element-content"><div class="element-fields">
                     ${field(isFirst ? "Apoyo obligatorio" : "Elemento", `<select class="tp">${selectOptionsWithBlank(list, selected, isFirst ? "Seleccione apoyo..." : "Seleccione elemento...")}</select>`, true)}
                     <div class="specific-fields"></div>
@@ -5792,13 +5798,23 @@
         $("newDxfImport").onclick = createProjectFromDxfImport;
         function exportDxfFile() {
           const exportName = safeFileName(projectName);
+          const hasGeo =
+            points.some((point) =>
+              point.elements.some(
+                (element) => normalizeStatus(elementColorStatus(element)) === "geo",
+              ),
+            ) ||
+            tramos.some((tramo) =>
+              tramo.networks.some((network) => normalizeStatus(network.status) === "geo"),
+            );
           let d =
-            "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n2\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nLTYPE\n2\nDASHED\n70\n0\n3\nDashed line\n72\n65\n73\n2\n40\n4.0\n49\n1.0\n74\n0\n49\n-3.0\n74\n0\n0\nENDTAB\n0\nTABLE\n2\nLAYER\n70\n4\n";
+            `0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n2\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nLTYPE\n2\nDASHED\n70\n0\n3\nDashed line\n72\n65\n73\n2\n40\n4.0\n49\n1.0\n74\n0\n49\n-3.0\n74\n0\n0\nENDTAB\n0\nTABLE\n2\nLAYER\n70\n${hasGeo ? 5 : 4}\n`;
           [
             ["PUNTOS", 7],
             ["NUEVO", 3],
             ["REPOSICION", 1],
             ["INTERVENIDO", 7],
+            ...(hasGeo ? [["GEO", 30]] : []),
           ].forEach((x) => {
             d += `0\nLAYER\n2\n${x[0]}\n70\n0\n62\n${x[1]}\n6\nCONTINUOUS\n`;
           });

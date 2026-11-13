@@ -1,4 +1,4 @@
-const CACHE = "replanteo-pwa-capas-3";
+const CACHE = "replanteo-pwa-capas-4";
 const APP_SHELL = [
   "./",
   "./index.html",
