@@ -1807,8 +1807,8 @@
                       <span class="gps-full-label">Ajustar coordenada</span><span class="gps-compact-label" aria-hidden="true">Ajustar</span></button
                     ><button type="button" id="confirmGps" class="primary hidden" aria-label="Confirmar ubicación">
                       <span class="gps-full-label">Confirmar ubicación</span><span class="gps-compact-label" aria-hidden="true">Confirmar</span></button
-                    ><button type="button" id="resumeGps" class="secondary">
-                      Reanudar GPS
+                    ><button type="button" id="resumeGps" class="secondary" aria-label="Reanudar GPS">
+                      <span class="gps-full-label">Reanudar GPS</span><span class="gps-compact-label" aria-hidden="true">Reanudar GPS</span>
                     </button>
                   </div>
                 </div>
@@ -3847,6 +3847,20 @@
           $("gpsAdjustActions").classList.add("active");
           $("adjustGps").classList.remove("hidden");
           $("confirmGps").classList.add("hidden");
+          updateGpsActionButton();
+        }
+
+        function gpsUpdatesActive() {
+          return watch !== null && !gpsAdjusting && !gpsUpdatesPaused;
+        }
+
+        function updateGpsActionButton() {
+          const label = gpsUpdatesActive() ? "Detener GPS" : "Reanudar GPS";
+          $("resumeGps").querySelectorAll("span").forEach((span) => {
+            span.textContent = label;
+          });
+          $("resumeGps").setAttribute("aria-label", label);
+          $("resumeGps").title = label;
         }
 
         function hideGpsAdjustmentControls() {
@@ -3863,6 +3877,7 @@
           lock(false);
           $("stopGps").classList.add("hidden");
           $("gps").textContent = "Tomar coordenada con GPS";
+          updateGpsActionButton();
           if (miniMarker) showGpsAdjustmentControls();
         }
 
@@ -3927,12 +3942,14 @@
             { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 },
           );
           watch = activeWatch;
+          updateGpsActionButton();
         }
 
         function beginGpsAdjustment() {
           if (!miniMarker) return;
           gpsAdjusting = true;
           gpsUpdatesPaused = true;
+          updateGpsActionButton();
           miniMarker.dragging.enable();
           miniMarker.setIcon(gpsMarkerIcon(true));
           $("adjustGps").classList.add("hidden");
@@ -3962,7 +3979,10 @@
 
         $("stopGps").onclick = stopGps;
         $("gps").onclick = startGps;
-        $("resumeGps").onclick = startGps;
+        $("resumeGps").onclick = () => {
+          if (gpsUpdatesActive()) stopGps();
+          else startGps();
+        };
         $("adjustGps").onclick = beginGpsAdjustment;
         $("confirmGps").onclick = confirmGpsAdjustment;
 
